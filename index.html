@@ -528,10 +528,9 @@
             'nu', 'nue', 'nus', 'nues', 'sexy', 'sex', 'sexe', 'porn', 'porno',
             'bite', 'queue', 'nichon', 'cul', 'fesse', 'sein', 'poitrine',
             'violence', 'violent', 'sang', 'mort', 'tuer', 'meurtre', 'cadavre',
-            'drogue', 'alcool', 'cigarette', 'fumer', 'boire',
-            'arme', 'fusil', 'pistolet', 'couteau', 'épée', 'guerre',
-            'horreur', 'terrifiant', 'cauchemar', 'monstre effrayant',
-            'diable', 'démon', 'enfer', 'satan'
+            'drogue', 'alcool', 'cigarette', 'fumer',
+            'arme', 'fusil', 'pistolet', 'couteau', 'guerre',
+            'horreur', 'terrifiant', 'cauchemar'
         ];
 
         function isKidFriendly(text) {
@@ -544,27 +543,37 @@
             return true;
         }
 
-        function sanitizePrompt(text) {
-            let sanitized = text.trim();
-            const replacements = {
-                'zombie': 'fantôme rigolo',
-                'squelette': 'fantôme',
-                'vampire': 'chauve-souris mignonne',
-                'loup-garou': 'loup',
-            };
-            for (const [bad, good] of Object.entries(replacements)) {
-                sanitized = sanitized.replace(new RegExp(bad, 'gi'), good);
-            }
-            return sanitized;
-        }
-
         // ============ Image Generation ============
         const WORKER_URL = 'https://colorbox-image-api.greffe-b.workers.dev/';
 
-        async function generateImage(prompt) {
-            const coloringPrompt = `coloring book page, ${prompt}, black and white line art, simple clean lines, cute kawaii style for children, no shading, white background, easy to color`;
+        // Translate French to English to avoid NSFW false positives
+        async function translateToEnglish(frenchText) {
+            try {
+                const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(frenchText)}&langpair=fr|en`);
+                const data = await response.json();
 
-            console.log('Generating image via Cloudflare Worker (SD 2.1):', coloringPrompt);
+                if (data.responseStatus === 200 && data.responseData.translatedText) {
+                    const translated = data.responseData.translatedText;
+                    console.log(`Translated: "${frenchText}" → "${translated}"`);
+                    return translated;
+                }
+
+                // Fallback: return original if translation fails
+                console.warn('Translation failed, using original text');
+                return frenchText;
+            } catch (error) {
+                console.warn('Translation error:', error);
+                return frenchText; // Fallback to original
+            }
+        }
+
+        async function generateImage(prompt) {
+            // Translate user prompt to English to avoid NSFW filter
+            const translatedPrompt = await translateToEnglish(prompt);
+
+            // Build the coloring book prompt
+            const coloringPrompt = `A high-quality coloring book page for kids featuring ${translatedPrompt}. Clean, bold black outlines, solid white background. Minimalist line art, vector style, no gradients, no gray tones, no shading. Thick outer lines with fine inner details. Professional coloring book aesthetic, 8k resolution, crisp edges`;
+            console.log('Generating image via Cloudflare Worker:', coloringPrompt);
 
             try {
                 // Call our Cloudflare Worker (no CORS issues!)
@@ -682,13 +691,13 @@
                 return;
             }
 
-            const safePrompt = sanitizePrompt(transcript);
-            state.currentPrompt = safePrompt;
-            elements.transcribedText.textContent = safePrompt;
+            const userPrompt = transcript.trim();
+            state.currentPrompt = userPrompt;
+            elements.transcribedText.textContent = userPrompt;
             setState('generating');
 
             try {
-                const imageUrl = await generateImage(safePrompt);
+                const imageUrl = await generateImage(userPrompt);
 
                 // Set up image load handlers
                 elements.resultImage.onload = async function() {
@@ -699,10 +708,10 @@
                     // Try to convert to data URL for history storage (may fail if CORS restricted)
                     try {
                         const dataUrl = await urlToDataUrl(imageUrl);
-                        saveToHistory(dataUrl, safePrompt);
+                        saveToHistory(dataUrl, userPrompt);
                     } catch (e) {
                         console.warn('Could not save to history:', e);
-                        saveToHistory(imageUrl, safePrompt);
+                        saveToHistory(imageUrl, userPrompt);
                     }
                 };
 
@@ -713,7 +722,7 @@
 
                 // Start loading the image
                 elements.resultImage.src = imageUrl;
-                elements.resultPrompt.textContent = safePrompt;
+                elements.resultPrompt.textContent = userPrompt;
 
             } catch (error) {
                 console.error('Generation error:', error);
@@ -729,14 +738,34 @@
                 prompt: prompt,
                 date: new Date().toISOString()
             };
-            
+
             state.history.unshift(item);
-            
+
             if (state.history.length > 20) {
                 state.history = state.history.slice(0, 20);
             }
-            
-            localStorage.setItem('colorbox_history', JSON.stringify(state.history));
+
+            // Try to save to localStorage, handle quota errors
+            try {
+                localStorage.setItem('colorbox_history', JSON.stringify(state.history));
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    console.warn('Storage quota exceeded, reducing history...');
+                    // Remove oldest items until we can save
+                    state.history = state.history.slice(0, 10);
+                    try {
+                        localStorage.setItem('colorbox_history', JSON.stringify(state.history));
+                    } catch (e2) {
+                        console.error('Could not save even reduced history:', e2);
+                        // Clear all history as last resort
+                        state.history = [item];
+                        localStorage.setItem('colorbox_history', JSON.stringify(state.history));
+                    }
+                } else {
+                    console.error('Could not save to history:', e);
+                }
+            }
+
             renderHistory();
         }
 
