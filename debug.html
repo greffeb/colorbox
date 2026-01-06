@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>ColorBox Debug Test</title>
+</head>
+<body>
+    <h1>Image Generation Debug Test</h1>
+    <button id="testBtn">Test Image Generation</button>
+    <div id="output"></div>
+    <img id="testImage" style="max-width: 500px; border: 2px solid black;">
+
+    <script>
+        async function testGenerateImage() {
+            const output = document.getElementById('output');
+            const img = document.getElementById('testImage');
+
+            output.innerHTML = '<p>Starting test...</p>';
+
+            try {
+                const prompt = 'un chat astronaute';
+                const coloringPrompt = `coloring book page, ${prompt}, black and white line art, simple clean lines, cute kawaii style for children, no shading, white background, easy to color`;
+                const encodedPrompt = encodeURIComponent(coloringPrompt);
+
+                const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${Date.now()}`;
+
+                output.innerHTML += `<p>URL: ${imageUrl}</p>`;
+                output.innerHTML += '<p>Fetching image...</p>';
+
+                const response = await fetch(imageUrl);
+                output.innerHTML += `<p>Response status: ${response.status}</p>`;
+                output.innerHTML += `<p>Response OK: ${response.ok}</p>`;
+                output.innerHTML += `<p>Content-Type: ${response.headers.get('content-type')}</p>`;
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                output.innerHTML += '<p>Converting to blob...</p>';
+                const blob = await response.blob();
+                output.innerHTML += `<p>Blob size: ${blob.size} bytes, type: ${blob.type}</p>`;
+
+                output.innerHTML += '<p>Converting to data URL...</p>';
+                const dataUrl = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+
+                output.innerHTML += `<p>Data URL length: ${dataUrl.length}</p>`;
+                output.innerHTML += '<p style="color: green; font-weight: bold;">✅ SUCCESS!</p>';
+
+                img.src = dataUrl;
+
+            } catch (error) {
+                output.innerHTML += `<p style="color: red; font-weight: bold;">❌ ERROR: ${error.message}</p>`;
+                output.innerHTML += `<p>Stack: ${error.stack}</p>`;
+                console.error('Full error:', error);
+            }
+        }
+
+        document.getElementById('testBtn').addEventListener('click', testGenerateImage);
+    </script>
+</body>
+</html>

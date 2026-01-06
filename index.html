@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#4a90d9">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>ColorBox - Coloriages Magiques</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: none;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .header-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .header-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .header-title {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .display-area {
+            flex: 1;
+            margin: 16px 20px;
+            background: white;
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .state {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .state.active {
+            display: flex;
+        }
+
+        .state-idle .hint {
+            color: #999;
+            font-size: 18px;
+            max-width: 280px;
+            line-height: 1.5;
+        }
+
+        .state-idle .hint-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .state-recording .mic-icon {
+            width: 100px;
+            height: 100px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: white;
+            animation: pulse 1s infinite;
+            margin-bottom: 24px;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255, 107, 107, 0); }
+        }
+
+        .state-recording .recording-text {
+            color: #666;
+            font-size: 18px;
+        }
+
+        .state-generating .transcribed-text {
+            font-size: 28px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 32px;
+            max-width: 100%;
+            word-wrap: break-word;
+        }
+
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 4px solid #f0f0f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .state-generating .loading-text {
+            margin-top: 20px;
+            color: #999;
+            font-size: 16px;
+        }
+
+        .state-result {
+            padding: 0;
+        }
+
+        .state-result .result-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .state-result .result-prompt {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 16px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            color: white;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .state-error .error-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .state-error .error-text {
+            color: #e74c3c;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        .retry-btn {
+            padding: 12px 32px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .push-button-container {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .push-button {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: none;
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            box-shadow: 
+                0 8px 24px rgba(0, 0, 0, 0.2),
+                inset 0 2px 4px rgba(255, 255, 255, 0.8);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            transition: all 0.1s;
+            position: relative;
+        }
+
+        .push-button:active,
+        .push-button.recording {
+            transform: scale(0.95);
+            box-shadow: 
+                0 4px 12px rgba(0, 0, 0, 0.2),
+                inset 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .push-button.recording {
+            background: linear-gradient(145deg, #ff7b7b, #ff5555);
+        }
+
+        .push-button.recording::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid #ff5555;
+            animation: recording-ring 1.5s infinite;
+        }
+
+        @keyframes recording-ring {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .history-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .history-panel.open {
+            transform: translateX(0);
+        }
+
+        .history-header {
+            display: flex;
+            align-items: center;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .history-header h2 {
+            flex: 1;
+            margin-left: 16px;
+            font-size: 18px;
+        }
+
+        .history-close {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .history-grid {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .history-item {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .history-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .history-empty {
+            grid-column: span 2;
+            text-align: center;
+            color: #999;
+            padding: 40px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 200;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .text-input-container {
+            display: flex;
+            gap: 10px;
+            padding: 0 20px 10px 20px;
+        }
+
+        .text-input-container input {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 25px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .text-input-container input::placeholder {
+            color: rgba(51, 51, 51, 0.5);
+        }
+
+        .text-input-container button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .text-input-container button:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <button class="header-btn" id="historyBtn" aria-label="Historique">
+            📚
+        </button>
+        <span class="header-title">🎨 ColorBox</span>
+        <button class="header-btn" id="shareBtn" aria-label="Partager" disabled>
+            📤
+        </button>
+    </header>
+
+    <main class="display-area">
+        <div class="state state-idle active" id="stateIdle">
+            <div class="hint-icon">🎨</div>
+            <p class="hint">Maintiens le bouton et décris ton dessin !</p>
+        </div>
+
+        <div class="state state-recording" id="stateRecording">
+            <div class="mic-icon">🎤</div>
+            <p class="recording-text">Je t'écoute...</p>
+        </div>
+
+        <div class="state state-generating" id="stateGenerating">
+            <p class="transcribed-text" id="transcribedText"></p>
+            <div class="loader"></div>
+            <p class="loading-text">Je dessine...</p>
+        </div>
+
+        <div class="state state-result" id="stateResult">
+            <img class="result-image" id="resultImage" alt="Coloriage généré">
+            <div class="result-prompt" id="resultPrompt"></div>
+        </div>
+
+        <div class="state state-error" id="stateError">
+            <div class="error-icon">😕</div>
+            <p class="error-text" id="errorText">Oups, quelque chose n'a pas marché</p>
+            <button class="retry-btn" id="retryBtn">Réessayer</button>
+        </div>
+    </main>
+
+    <div class="text-input-container">
+        <input type="text" id="textInput" placeholder="Ou tape ton idée ici..." />
+        <button id="submitBtn">✨</button>
+    </div>
+
+    <div class="push-button-container">
+        <button class="push-button" id="pushButton" aria-label="Appuyer pour parler">
+            🎤
+        </button>
+    </div>
+
+    <div class="history-panel" id="historyPanel">
+        <div class="history-header">
+            <button class="history-close" id="historyClose">←</button>
+            <h2>Mes dessins</h2>
+        </div>
+        <div class="history-grid" id="historyGrid">
+            <div class="history-empty">Aucun dessin pour l'instant</div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============ App State ============
+        const state = {
+            currentImage: null,
+            currentPrompt: null,
+            history: JSON.parse(localStorage.getItem('colorbox_history') || '[]'),
+            isRecording: false
+        };
+
+        // ============ DOM Elements ============
+        const elements = {
+            pushButton: document.getElementById('pushButton'),
+            shareBtn: document.getElementById('shareBtn'),
+            historyBtn: document.getElementById('historyBtn'),
+            historyPanel: document.getElementById('historyPanel'),
+            historyClose: document.getElementById('historyClose'),
+            historyGrid: document.getElementById('historyGrid'),
+            retryBtn: document.getElementById('retryBtn'),
+            toast: document.getElementById('toast'),
+            textInput: document.getElementById('textInput'),
+            submitBtn: document.getElementById('submitBtn'),
+            states: {
+                idle: document.getElementById('stateIdle'),
+                recording: document.getElementById('stateRecording'),
+                generating: document.getElementById('stateGenerating'),
+                result: document.getElementById('stateResult'),
+                error: document.getElementById('stateError')
+            },
+            transcribedText: document.getElementById('transcribedText'),
+            resultImage: document.getElementById('resultImage'),
+            resultPrompt: document.getElementById('resultPrompt'),
+            errorText: document.getElementById('errorText')
+        };
+
+        // ============ Speech Recognition ============
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'fr-FR';
+            recognition.continuous = false;
+            recognition.interimResults = true;
+
+            recognition.onresult = (event) => {
+                const transcript = Array.from(event.results)
+                    .map(result => result[0].transcript)
+                    .join('');
+                
+                if (event.results[0].isFinal) {
+                    handleVoiceInput(transcript);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                if (event.error === 'no-speech') {
+                    showToast("Je n'ai rien entendu, réessaie !");
+                    setState('idle');
+                } else if (event.error !== 'aborted') {
+                    showError("Problème avec le micro. Vérifie les permissions.");
+                }
+                stopRecording();
+            };
+
+            recognition.onend = () => {
+                if (state.isRecording) {
+                    stopRecording();
+                }
+            };
+        }
+
+        // ============ Kid-Friendly Filter ============
+        const blockedWords = [
+            'nu', 'nue', 'nus', 'nues', 'sexy', 'sex', 'sexe', 'porn', 'porno',
+            'bite', 'queue', 'nichon', 'cul', 'fesse', 'sein', 'poitrine',
+            'violence', 'violent', 'sang', 'mort', 'tuer', 'meurtre', 'cadavre',
+            'drogue', 'alcool', 'cigarette', 'fumer', 'boire',
+            'arme', 'fusil', 'pistolet', 'couteau', 'épée', 'guerre',
+            'horreur', 'terrifiant', 'cauchemar', 'monstre effrayant',
+            'diable', 'démon', 'enfer', 'satan'
+        ];
+
+        function isKidFriendly(text) {
+            const lowerText = text.toLowerCase();
+            for (const word of blockedWords) {
+                if (lowerText.includes(word)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function sanitizePrompt(text) {
+            let sanitized = text.trim();
+            const replacements = {
+                'zombie': 'fantôme rigolo',
+                'squelette': 'fantôme',
+                'vampire': 'chauve-souris mignonne',
+                'loup-garou': 'loup',
+            };
+            for (const [bad, good] of Object.entries(replacements)) {
+                sanitized = sanitized.replace(new RegExp(bad, 'gi'), good);
+            }
+            return sanitized;
+        }
+
+        // ============ Image Generation ============
+        async function generateImage(prompt) {
+            const coloringPrompt = `coloring book page, ${prompt}, black and white line art, simple clean lines, cute kawaii style for children, no shading, white background, easy to color`;
+            const encodedPrompt = encodeURIComponent(coloringPrompt);
+
+            // Try using image.pollinations.ai directly (bypasses some CORS restrictions when used in img tags)
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&model=flux&seed=${Date.now()}`;
+
+            console.log('Generating image with URL:', imageUrl);
+
+            // Return the URL directly - let the browser load it
+            // We'll convert to base64 after successful load for history storage
+            return imageUrl;
+        }
+
+        function urlToDataUrl(imageUrl) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    try {
+                        const dataUrl = canvas.toDataURL('image/png');
+                        resolve(dataUrl);
+                    } catch(e) {
+                        console.warn('Could not convert to data URL (CORS), using original URL:', e);
+                        resolve(imageUrl);
+                    }
+                };
+                img.onerror = reject;
+                img.src = imageUrl;
+            });
+        }
+
+        function blobToDataUrl(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+            });
+        }
+
+        // ============ State Management ============
+        function setState(stateName) {
+            Object.values(elements.states).forEach(el => el.classList.remove('active'));
+            elements.states[stateName]?.classList.add('active');
+            elements.shareBtn.disabled = stateName !== 'result';
+        }
+
+        // ============ Recording Functions ============
+        function startRecording() {
+            if (!recognition) {
+                showError("La reconnaissance vocale n'est pas supportée sur ce navigateur.");
+                return;
+            }
+
+            state.isRecording = true;
+            elements.pushButton.classList.add('recording');
+            setState('recording');
+            
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error('Recognition start error:', e);
+            }
+        }
+
+        function stopRecording() {
+            state.isRecording = false;
+            elements.pushButton.classList.remove('recording');
+            
+            try {
+                recognition?.stop();
+            } catch (e) {
+                // Ignore errors when stopping
+            }
+        }
+
+        // ============ Voice Input Handler ============
+        async function handleVoiceInput(transcript) {
+            if (!transcript.trim()) {
+                showToast("Je n'ai rien compris, réessaie !");
+                setState('idle');
+                return;
+            }
+
+            if (!isKidFriendly(transcript)) {
+                showToast("Hmm, essaie un autre dessin ! 🙈");
+                setState('idle');
+                return;
+            }
+
+            const safePrompt = sanitizePrompt(transcript);
+            state.currentPrompt = safePrompt;
+            elements.transcribedText.textContent = safePrompt;
+            setState('generating');
+
+            try {
+                const imageUrl = await generateImage(safePrompt);
+
+                // Set up image load handlers
+                elements.resultImage.onload = async function() {
+                    console.log('Image loaded successfully');
+                    state.currentImage = imageUrl;
+                    setState('result');
+
+                    // Try to convert to data URL for history storage (may fail if CORS restricted)
+                    try {
+                        const dataUrl = await urlToDataUrl(imageUrl);
+                        saveToHistory(dataUrl, safePrompt);
+                    } catch (e) {
+                        console.warn('Could not save to history:', e);
+                        saveToHistory(imageUrl, safePrompt);
+                    }
+                };
+
+                elements.resultImage.onerror = function() {
+                    console.error('Image failed to load');
+                    showError("Oups, le dessin n'a pas marché. Réessaie !");
+                };
+
+                // Start loading the image
+                elements.resultImage.src = imageUrl;
+                elements.resultPrompt.textContent = safePrompt;
+
+            } catch (error) {
+                console.error('Generation error:', error);
+                showError("Oups, le dessin n'a pas marché. Réessaie !");
+            }
+        }
+
+        // ============ History Management ============
+        function saveToHistory(imageUrl, prompt) {
+            const item = {
+                id: Date.now(),
+                image: imageUrl,
+                prompt: prompt,
+                date: new Date().toISOString()
+            };
+            
+            state.history.unshift(item);
+            
+            if (state.history.length > 20) {
+                state.history = state.history.slice(0, 20);
+            }
+            
+            localStorage.setItem('colorbox_history', JSON.stringify(state.history));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            if (state.history.length === 0) {
+                elements.historyGrid.innerHTML = '<div class="history-empty">Aucun dessin pour l\'instant</div>';
+                return;
+            }
+
+            elements.historyGrid.innerHTML = state.history.map(item => `
+                <div class="history-item" data-id="${item.id}">
+                    <img src="${item.image}" alt="${item.prompt}">
+                </div>
+            `).join('');
+
+            elements.historyGrid.querySelectorAll('.history-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    const item = state.history.find(h => h.id === parseInt(el.dataset.id));
+                    if (item) {
+                        state.currentImage = item.image;
+                        state.currentPrompt = item.prompt;
+                        elements.resultImage.src = item.image;
+                        elements.resultPrompt.textContent = item.prompt;
+                        setState('result');
+                        closeHistory();
+                    }
+                });
+            });
+        }
+
+        function openHistory() {
+            renderHistory();
+            elements.historyPanel.classList.add('open');
+        }
+
+        function closeHistory() {
+            elements.historyPanel.classList.remove('open');
+        }
+
+        // ============ Share/Print ============
+        async function shareImage() {
+            if (!state.currentImage) return;
+
+            try {
+                const response = await fetch(state.currentImage);
+                const blob = await response.blob();
+                const file = new File([blob], 'coloriage.png', { type: 'image/png' });
+
+                if (navigator.share && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        title: 'Mon coloriage',
+                        text: state.currentPrompt,
+                        files: [file]
+                    });
+                } else if (navigator.share) {
+                    await navigator.share({
+                        title: 'Mon coloriage',
+                        text: state.currentPrompt,
+                        url: state.currentImage
+                    });
+                } else {
+                    printImage();
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    printImage();
+                }
+            }
+        }
+
+        function printImage() {
+            if (!state.currentImage) return;
+
+            const printWindow = window.open('', '_blank');
+            const html = '<!DOCTYPE html><html><head><title>Coloriage - ' + state.currentPrompt + '</title>' +
+                '<style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh}' +
+                'img{max-width:100%;max-height:100vh}@media print{body{margin:0}img{width:100%;height:auto}}</style>' +
+                '</head><body><img src="' + state.currentImage + '" alt="' + state.currentPrompt + '">' +
+                '<script>window.onload=function(){window.print();}<\/script></body></html>';
+            printWindow.document.write(html);
+            printWindow.document.close();
+        }
+
+        // ============ Utility Functions ============
+        function showError(message) {
+            elements.errorText.textContent = message;
+            setState('error');
+        }
+
+        function showToast(message) {
+            elements.toast.textContent = message;
+            elements.toast.classList.add('show');
+            setTimeout(() => {
+                elements.toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // ============ Event Listeners ============
+        elements.pushButton.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startRecording();
+        });
+
+        elements.pushButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            stopRecording();
+        });
+
+        elements.pushButton.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startRecording();
+        });
+
+        elements.pushButton.addEventListener('mouseup', (e) => {
+            e.preventDefault();
+            stopRecording();
+        });
+
+        elements.pushButton.addEventListener('mouseleave', () => {
+            if (state.isRecording) {
+                stopRecording();
+            }
+        });
+
+        elements.shareBtn.addEventListener('click', shareImage);
+        elements.historyBtn.addEventListener('click', openHistory);
+        elements.historyClose.addEventListener('click', closeHistory);
+        elements.retryBtn.addEventListener('click', () => {
+            setState('idle');
+        });
+
+        // Text input handlers
+        elements.submitBtn.addEventListener('click', () => {
+            const text = elements.textInput.value.trim();
+            if (text) {
+                elements.textInput.value = '';
+                handleVoiceInput(text);
+            } else {
+                showToast("Écris quelque chose !");
+            }
+        });
+
+        elements.textInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const text = elements.textInput.value.trim();
+                if (text) {
+                    elements.textInput.value = '';
+                    handleVoiceInput(text);
+                }
+            }
+        });
+
+        // ============ PWA Service Worker ============
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('SW registered'))
+                .catch(err => console.log('SW registration failed:', err));
+        }
+
+        // ============ Initialize ============
+        renderHistory();
+    </script>
+</body>
+</html>
