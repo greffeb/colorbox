@@ -136,7 +136,7 @@ const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=51
 - `manifest.json`
 - Icons or other static assets
 
-**Current version format**: `colorbox-vX` (e.g., `colorbox-v7`)
+**Current version format**: `colorbox-vX` (e.g., `colorbox-v8`)
 
 **Why this is critical**:
 - PWA users (especially on mobile) will continue seeing the old cached version
@@ -146,10 +146,10 @@ const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=51
 **Example**:
 ```javascript
 // Before making changes
-const CACHE_NAME = 'colorbox-v7';
+const CACHE_NAME = 'colorbox-v8';
 
 // After making ANY modification to index.html or other assets
-const CACHE_NAME = 'colorbox-v8';  // ← ALWAYS increment!
+const CACHE_NAME = 'colorbox-v9';  // ← ALWAYS increment!
 ```
 
 **Deployment workflow**:
