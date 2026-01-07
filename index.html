@@ -194,6 +194,9 @@
             color: #e74c3c;
             font-size: 18px;
             margin-bottom: 20px;
+            white-space: pre-line;
+            max-width: 90%;
+            line-height: 1.5;
         }
 
         .retry-btn {
@@ -510,6 +513,8 @@
                 if (event.error === 'no-speech') {
                     showToast("Je n'ai rien entendu, réessaie !");
                     setState('idle');
+                } else if (event.error === 'not-allowed') {
+                    showError("🎤 Autorise l'accès au micro dans les paramètres de Chrome !\n\nMenu ⋮ → Paramètres → Paramètres du site → Microphone");
                 } else if (event.error !== 'aborted') {
                     showError("Problème avec le micro. Vérifie les permissions.");
                 }
@@ -655,14 +660,21 @@
                 return;
             }
 
+            // Check if site is served over HTTPS or localhost (required for microphone)
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                showError("⚠️ Le micro nécessite HTTPS !\n\nUtilise https:// ou localhost pour accéder au site.");
+                return;
+            }
+
             state.isRecording = true;
             elements.pushButton.classList.add('recording');
             setState('recording');
-            
+
             try {
                 recognition.start();
             } catch (e) {
                 console.error('Recognition start error:', e);
+                showError("Erreur au démarrage du micro. Vérifie les permissions dans Chrome.");
             }
         }
 
