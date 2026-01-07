@@ -616,20 +616,26 @@
         // ============ Speech Recognition ============
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
+        let pendingTranscript = '';  // Store transcript while button held (true push-to-talk)
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = 'fr-FR';
-            recognition.continuous = false;
+            recognition.continuous = true;  // Keep listening until button released
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
                 const transcript = Array.from(event.results)
                     .map(result => result[0].transcript)
                     .join('');
-                
-                if (event.results[0].isFinal) {
-                    handleVoiceInput(transcript);
+
+                // Store transcript, don't submit yet (wait for button release)
+                pendingTranscript = transcript;
+
+                // Show live preview in recording UI
+                const recordingText = document.querySelector('.recording-text');
+                if (recordingText && transcript.trim()) {
+                    recordingText.textContent = transcript;
                 }
             };
 
@@ -647,8 +653,13 @@
             };
 
             recognition.onend = () => {
+                // If button still held, restart recognition (handles browser timeout)
                 if (state.isRecording) {
-                    stopRecording();
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        // Already started or other error, ignore
+                    }
                 }
             };
         }
@@ -873,6 +884,7 @@
             }
 
             state.isRecording = true;
+            pendingTranscript = '';  // Clear any previous transcript
             elements.pushButton.classList.add('recording');
             setState('recording');
 
@@ -887,11 +899,29 @@
         function stopRecording() {
             state.isRecording = false;
             elements.pushButton.classList.remove('recording');
-            
+
+            // Reset recording text for next time
+            const recordingText = document.querySelector('.recording-text');
+            if (recordingText) {
+                recordingText.textContent = "Je t'écoute...";
+            }
+
             try {
                 recognition?.stop();
             } catch (e) {
                 // Ignore errors when stopping
+            }
+
+            // Submit transcript on button release
+            const transcript = pendingTranscript;
+            pendingTranscript = '';  // Clear for next recording
+
+            if (transcript.trim()) {
+                handleVoiceInput(transcript);
+            } else {
+                // Button released with no speech detected
+                showToast("Je n'ai rien compris, réessaie !");
+                setState('idle');
             }
         }
 
