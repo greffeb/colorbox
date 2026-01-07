@@ -1,4 +1,4 @@
-const CACHE_NAME = 'colorbox-v6';
+const CACHE_NAME = 'colorbox-v8';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
