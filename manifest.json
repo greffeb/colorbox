@@ -2,7 +2,7 @@
     "name": "ColorBox - Coloriages Magiques",
     "short_name": "ColorBox",
     "description": "Génère des coloriages pour enfants par la voix",
-    "start_url": "/index.html",
+    "start_url": "./index.html",
     "display": "standalone",
     "background_color": "#667eea",
     "theme_color": "#667eea",

@@ -65,7 +65,7 @@ const imgElement = await puter.ai.txt2img(coloringPrompt, {
 **API**: `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict`
 **Why it failed**: Requires billing account
 **Details**:
-- User provided API key: `AIzaSyCvl7nGFVe8_i10MOMMGQPXdL8DY2jSaK0`
+- User provided API key: `YOUR_API_KEY_HERE`
 - Excellent quality (Imagen 4)
 - Free tier exists BUT requires:
   - Google Cloud billing account setup
@@ -107,7 +107,7 @@ GET https://stablehorde.net/api/v2/generate/status/{jobId}
 **API**: `https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-2-1`
 **Why it failed**: CORS policy blocked browser requests
 **Details**:
-- User provided token: `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`
+- User provided token: `YOUR_HF_TOKEN_HERE`
 - Free tier: 1000 requests/day (excellent!)
 - Model: Stable Diffusion 2.1
 **Error**:

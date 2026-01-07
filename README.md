@@ -13,34 +13,34 @@ Une PWA qui reproduit le concept de la StickerBox : génération de coloriages p
 
 ## Installation sur Android
 
-### Option 1 : Hébergement local (pour tester)
+Pour que le microphone fonctionne, le site doit être sécurisé (HTTPS) ou être considéré comme "localhost".
 
-```bash
-# Dans le dossier du projet
-python3 -m http.server 8080
-```
+### Option 1 : Test local via USB (Recommandé)
+Cette méthode permet d'utiliser le micro sans déployer le site.
 
-Ouvre `http://localhost:8080` sur ton téléphone (même réseau WiFi).
+1.  Sur ton PC : Lance le serveur (`python3 -m http.server 8000`).
+2.  Connecte ton téléphone au PC via USB.
+3.  Active le **Débogage USB** sur le téléphone (dans les Options développeur).
+4.  Sur Chrome PC : Ouvre `chrome://inspect/#devices`.
+5.  Coche "Port forwarding" et clique sur "Configure...".
+6.  Ajoute : Port `8000`, IP `localhost:8000`.
+7.  Sur Chrome Android : Ouvre `http://localhost:8000`.
+    *   Le site croira qu'il est sur le téléphone, et le micro fonctionnera !
 
-### Option 2 : Hébergement gratuit
+### Option 2 : Déploiement (Le plus simple pour usage réel)
+Pour une installation permanente sans câbles.
 
-1. **GitHub Pages** :
-   - Push le dossier sur GitHub
-   - Settings > Pages > Deploy from branch
-
-2. **Netlify Drop** :
-   - Va sur https://app.netlify.com/drop
-   - Glisse le dossier
-   - URL gratuite immédiate
-
-3. **Vercel** :
-   - `npm i -g vercel && vercel`
+1.  **GitHub Pages** :
+    *   Push le dossier sur GitHub.
+    *   Settings > Pages > Deploy from branch.
+2.  **Vercel / Netlify** :
+    *   Glisse le dossier sur leur interface d'upload.
 
 ### Installation PWA
-
 Une fois l'app ouverte dans Chrome Android :
-1. Menu (⋮) > "Ajouter à l'écran d'accueil"
-2. L'app s'installe comme une app native
+1.  Un bandeau "Ajouter à l'écran d'accueil" peut apparaître.
+2.  Sinon : Menu (⋮) > "Ajouter à l'écran d'accueil" ou "Installer l'application".
+3.  L'app apparaîtra avec son icône dans tes applications.
 
 ## Utilisation
 
