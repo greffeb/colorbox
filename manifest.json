@@ -4,8 +4,8 @@
     "description": "Génère des coloriages pour enfants par la voix",
     "start_url": "./index.html",
     "display": "standalone",
-    "background_color": "#667eea",
-    "theme_color": "#667eea",
+    "background_color": "#DC4D01",
+    "theme_color": "#DC4D01",
     "orientation": "portrait",
     "icons": [
         {

@@ -3,13 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#4a90d9">
+    <meta name="theme-color" content="#DC4D01">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>ColorBox - Coloriages Magiques</title>
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="icon-192.png">
     <link rel="apple-touch-icon" href="icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -20,7 +23,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #DC4D01;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
@@ -35,7 +38,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 16px 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.1);
             backdrop-filter: blur(10px);
         }
 
@@ -44,7 +47,7 @@
             height: 44px;
             border-radius: 12px;
             border: none;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.15);
             color: white;
             font-size: 20px;
             cursor: pointer;
@@ -55,7 +58,7 @@
         }
 
         .header-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.25);
         }
 
         .header-btn:disabled {
@@ -72,15 +75,60 @@
         .display-area {
             flex: 1;
             margin: 16px 20px;
-            background: linear-gradient(135deg, #9b7ed6 0%, #a855f7 100%);
-            border-radius: 24px;
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+            position: relative;
+        }
+
+        .polaroid {
+            background: #fefefa;
+            padding: 12px 12px 50px 12px;
+            box-shadow:
+                0 3px 6px rgba(0,0,0,0.16),
+                0 10px 20px rgba(0,0,0,0.19),
+                0 20px 40px rgba(0,0,0,0.12);
+            transform: rotate(-1.5deg);
+            position: relative;
+            max-width: 320px;
+            width: 85%;
+        }
+
+        /* Subtle tape effect at top */
+        .polaroid::before {
+            content: '';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%) rotate(2deg);
+            width: 60px;
+            height: 24px;
+            background: rgba(255, 255, 220, 0.7);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .polaroid-frame {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: #f5f5f5;
+            display: flex;
             align-items: center;
             justify-content: center;
             overflow: hidden;
             position: relative;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .polaroid-caption {
+            font-family: 'Caveat', cursive;
+            font-size: 24px;
+            font-weight: 500;
+            color: #2d2d2d;
+            text-align: center;
+            padding: 14px 8px 4px 8px;
+            min-height: 36px;
+            line-height: 1.2;
+            word-wrap: break-word;
         }
 
         .state {
@@ -99,56 +147,57 @@
         }
 
         .state-idle .hint {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 18px;
-            max-width: 280px;
-            line-height: 1.5;
+            color: #666;
+            font-size: 16px;
+            max-width: 240px;
+            line-height: 1.4;
         }
 
         .state-idle .hint-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-            opacity: 0.8;
+            font-size: 56px;
+            margin-bottom: 16px;
+            opacity: 0.9;
         }
 
         .state-recording .mic-icon {
-            width: 100px;
-            height: 100px;
-            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #DC4D01 0%, #c44401 100%);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 48px;
+            font-size: 40px;
             color: white;
             animation: pulse 1s infinite;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         @keyframes pulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.4); }
-            50% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255, 107, 107, 0); }
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 77, 1, 0.4); }
+            50% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(220, 77, 1, 0); }
         }
 
         .state-recording .recording-text {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 18px;
+            color: #555;
+            font-size: 16px;
         }
 
         .state-generating .transcribed-text {
+            font-family: 'Caveat', cursive;
             font-size: 28px;
             font-weight: 600;
-            color: white;
-            margin-bottom: 32px;
+            color: #333;
+            margin-bottom: 24px;
             max-width: 100%;
             word-wrap: break-word;
         }
 
         .loader {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top-color: white;
+            width: 50px;
+            height: 50px;
+            border: 4px solid #eee;
+            border-top: 4px solid #DC4D01;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -158,9 +207,9 @@
         }
 
         .state-generating .loading-text {
-            margin-top: 20px;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 16px;
+            margin-top: 16px;
+            color: #666;
+            font-size: 14px;
         }
 
         .state-result {
@@ -168,69 +217,68 @@
         }
 
         .state-result .result-image {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
+        /* Hidden - caption now in polaroid bottom */
         .state-result .result-prompt {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 16px;
-            background: linear-gradient(transparent, rgba(0,0,0,0.7));
-            color: white;
-            font-size: 16px;
-            text-align: center;
+            display: none;
         }
 
         .state-error .error-icon {
-            font-size: 64px;
-            margin-bottom: 16px;
+            font-size: 56px;
+            margin-bottom: 14px;
         }
 
         .state-error .error-text {
-            color: rgba(255, 255, 255, 0.95);
-            font-size: 18px;
-            margin-bottom: 20px;
+            color: #555;
+            font-size: 16px;
+            margin-bottom: 18px;
             white-space: pre-line;
             max-width: 90%;
-            line-height: 1.5;
+            line-height: 1.4;
         }
 
         .retry-btn {
-            padding: 12px 32px;
-            background: white;
-            color: #764ba2;
+            padding: 12px 28px;
+            background: #DC4D01;
+            color: white;
             border: none;
             border-radius: 24px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .retry-btn:hover {
+            background: #c44401;
         }
 
         .push-button-container {
-            padding: 20px;
+            padding: 24px;
             display: flex;
             justify-content: center;
         }
 
         .push-button {
-            width: 100px;
-            height: 100px;
+            width: 130px;
+            height: 130px;
             border-radius: 50%;
             border: none;
-            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            background: linear-gradient(145deg, #ffffff, #f0f0f0);
             box-shadow:
-                0 8px 24px rgba(0, 0, 0, 0.2),
-                inset 0 2px 4px rgba(255, 255, 255, 0.8);
+                0 8px 24px rgba(0, 0, 0, 0.25),
+                0 4px 8px rgba(0, 0, 0, 0.15),
+                inset 0 2px 4px rgba(255, 255, 255, 0.9);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 32px;
-            transition: all 0.1s;
+            font-size: 44px;
+            transition: all 0.15s ease;
             position: relative;
             user-select: none;
             -webkit-user-select: none;
@@ -241,13 +289,13 @@
         .push-button:active,
         .push-button.recording {
             transform: scale(0.95);
-            box-shadow: 
+            box-shadow:
                 0 4px 12px rgba(0, 0, 0, 0.2),
                 inset 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
         .push-button.recording {
-            background: linear-gradient(145deg, #ff7b7b, #ff5555);
+            background: linear-gradient(145deg, #DC4D01, #c44401);
         }
 
         .push-button.recording::after {
@@ -256,7 +304,7 @@
             width: 100%;
             height: 100%;
             border-radius: 50%;
-            border: 3px solid #ff5555;
+            border: 3px solid #DC4D01;
             animation: recording-ring 1.5s infinite;
         }
 
@@ -287,7 +335,7 @@
             display: flex;
             align-items: center;
             padding: 16px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #DC4D01 0%, #c44401 100%);
             color: white;
         }
 
@@ -306,6 +354,11 @@
             color: white;
             font-size: 20px;
             cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .history-close:hover {
+            background: rgba(255,255,255,0.3);
         }
 
         .history-grid {
@@ -358,43 +411,7 @@
             opacity: 1;
         }
 
-        .text-input-container {
-            display: flex;
-            gap: 10px;
-            padding: 0 20px 10px 20px;
-        }
-
-        .text-input-container input {
-            flex: 1;
-            padding: 12px 20px;
-            border-radius: 25px;
-            border: 2px solid rgba(255, 255, 255, 0.4);
-            background: rgba(255, 255, 255, 0.9);
-            color: #333;
-            font-size: 16px;
-            outline: none;
-        }
-
-        .text-input-container input::placeholder {
-            color: rgba(51, 51, 51, 0.5);
-        }
-
-        .text-input-container button {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            border: none;
-            background: rgba(255, 255, 255, 0.3);
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .text-input-container button:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
-    </style>
+        </style>
 </head>
 <body>
     <header class="header">
@@ -408,38 +425,38 @@
     </header>
 
     <main class="display-area">
-        <div class="state state-idle active" id="stateIdle">
-            <div class="hint-icon">🎨</div>
-            <p class="hint">Maintiens le bouton et décris ton dessin !</p>
-        </div>
+        <div class="polaroid">
+            <div class="polaroid-frame">
+                <div class="state state-idle active" id="stateIdle">
+                    <div class="hint-icon">🎨</div>
+                    <p class="hint">Maintiens le bouton et décris ton dessin !</p>
+                </div>
 
-        <div class="state state-recording" id="stateRecording">
-            <div class="mic-icon">🎤</div>
-            <p class="recording-text">Je t'écoute...</p>
-        </div>
+                <div class="state state-recording" id="stateRecording">
+                    <div class="mic-icon">🎤</div>
+                    <p class="recording-text">Je t'écoute...</p>
+                </div>
 
-        <div class="state state-generating" id="stateGenerating">
-            <p class="transcribed-text" id="transcribedText"></p>
-            <div class="loader"></div>
-            <p class="loading-text">Je dessine...</p>
-        </div>
+                <div class="state state-generating" id="stateGenerating">
+                    <p class="transcribed-text" id="transcribedText"></p>
+                    <div class="loader"></div>
+                    <p class="loading-text">Je dessine...</p>
+                </div>
 
-        <div class="state state-result" id="stateResult">
-            <img class="result-image" id="resultImage" alt="Coloriage généré">
-            <div class="result-prompt" id="resultPrompt"></div>
-        </div>
+                <div class="state state-result" id="stateResult">
+                    <img class="result-image" id="resultImage" alt="Coloriage généré">
+                    <div class="result-prompt" id="resultPrompt"></div>
+                </div>
 
-        <div class="state state-error" id="stateError">
-            <div class="error-icon">😕</div>
-            <p class="error-text" id="errorText">Oups, quelque chose n'a pas marché</p>
-            <button class="retry-btn" id="retryBtn">Réessayer</button>
+                <div class="state state-error" id="stateError">
+                    <div class="error-icon">😕</div>
+                    <p class="error-text" id="errorText">Oups, quelque chose n'a pas marché</p>
+                    <button class="retry-btn" id="retryBtn">Réessayer</button>
+                </div>
+            </div>
+            <div class="polaroid-caption" id="polaroidCaption"></div>
         </div>
     </main>
-
-    <div class="text-input-container">
-        <input type="text" id="textInput" placeholder="Ou tape ton idée ici..." />
-        <button id="submitBtn">✨</button>
-    </div>
 
     <div class="push-button-container">
         <button class="push-button" id="pushButton" aria-label="Appuyer pour parler">
@@ -478,8 +495,7 @@
             historyGrid: document.getElementById('historyGrid'),
             retryBtn: document.getElementById('retryBtn'),
             toast: document.getElementById('toast'),
-            textInput: document.getElementById('textInput'),
-            submitBtn: document.getElementById('submitBtn'),
+            polaroidCaption: document.getElementById('polaroidCaption'),
             states: {
                 idle: document.getElementById('stateIdle'),
                 recording: document.getElementById('stateRecording'),
@@ -656,6 +672,11 @@
             Object.values(elements.states).forEach(el => el.classList.remove('active'));
             elements.states[stateName]?.classList.add('active');
             elements.shareBtn.disabled = stateName !== 'result';
+
+            // Clear caption on idle/recording states
+            if (stateName === 'idle' || stateName === 'recording') {
+                elements.polaroidCaption.textContent = '';
+            }
         }
 
         // ============ Recording Functions ============
@@ -711,6 +732,7 @@
             const userPrompt = transcript.trim();
             state.currentPrompt = userPrompt;
             elements.transcribedText.textContent = userPrompt;
+            elements.polaroidCaption.textContent = userPrompt;
             setState('generating');
 
             try {
@@ -806,6 +828,7 @@
                         state.currentPrompt = item.prompt;
                         elements.resultImage.src = item.image;
                         elements.resultPrompt.textContent = item.prompt;
+                        elements.polaroidCaption.textContent = item.prompt;
                         setState('result');
                         closeHistory();
                     }
@@ -912,27 +935,6 @@
         elements.historyClose.addEventListener('click', closeHistory);
         elements.retryBtn.addEventListener('click', () => {
             setState('idle');
-        });
-
-        // Text input handlers
-        elements.submitBtn.addEventListener('click', () => {
-            const text = elements.textInput.value.trim();
-            if (text) {
-                elements.textInput.value = '';
-                handleVoiceInput(text);
-            } else {
-                showToast("Écris quelque chose !");
-            }
-        });
-
-        elements.textInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                const text = elements.textInput.value.trim();
-                if (text) {
-                    elements.textInput.value = '';
-                    handleVoiceInput(text);
-                }
-            }
         });
 
         // ============ PWA Service Worker ============
