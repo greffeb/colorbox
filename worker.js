@@ -1,6 +1,8 @@
 export default {
   async fetch(request, env, ctx) {
-    // Handle CORS
+    const url = new URL(request.url);
+
+    // Handle CORS preflight
     if (request.method === 'OPTIONS') {
       return new Response(null, {
         headers: {
@@ -16,41 +18,97 @@ export default {
     }
 
     try {
-      const { prompt } = await request.json();
-      
-      console.log('Generating image for prompt:', prompt);
+      // Route: /enrich - LLM prompt enrichment
+      if (url.pathname === '/enrich') {
+        return await handleEnrich(request, env);
+      }
 
-      // Flux 1 Schnell with more steps for better quality
-      const aiResponse = await env.AI.run(
-        '@cf/black-forest-labs/flux-1-schnell',
-        {
-          prompt: prompt,
-          num_steps: 6  // Increased from 4 (default) to 8 for better quality
-        }
-      );
-
-      // Convert base64 to binary
-      const binaryString = atob(aiResponse.image);
-      const imageBytes = Uint8Array.from(binaryString, (char) => char.codePointAt(0));
-
-      return new Response(imageBytes, {
-        headers: {
-          'Content-Type': 'image/png',
-          'Access-Control-Allow-Origin': '*',
-        },
-      });
+      // Route: / - Image generation (default)
+      return await handleImageGeneration(request, env);
 
     } catch (error) {
       console.error('Worker error:', error);
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: error.message
       }), {
         status: 500,
-        headers: { 
-          'Content-Type': 'application/json', 
-          'Access-Control-Allow-Origin': '*' 
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
         },
       });
     }
   },
 };
+
+// LLM prompt enrichment using Llama 3.1
+async function handleEnrich(request, env) {
+  const { prompt } = await request.json();
+
+  console.log('Enriching prompt:', prompt);
+
+  const systemPrompt = `You enrich simple ideas into children's coloring book scenes.
+
+IMPORTANT: If the prompt is already detailed (has background, clothes, pose, or activity), KEEP their details! Only translate to English. Do NOT replace their scene with generic elements.
+
+For SIMPLE prompts (just a subject like "un chat"):
+- Add a cute interpretation, simple action, and playful environment
+
+For DETAILED prompts (already has context):
+- Just translate to English and keep ALL their specific details
+
+CRITICAL RULES:
+- NEVER mention colors (no "red", "blue", "grey", "bright", etc.)
+- NEVER describe textures (no "fluffy", "soft", "shiny")
+- Keep it to 1 sentence maximum
+- Respond in English only
+
+Examples:
+"un chat" → "A cute cat sitting in a garden with butterflies and flowers"
+"un renard qui fait de la moto et qui porte un pyjama rayé" → "A fox riding a motorcycle wearing striped pajamas"
+"un ours qui jongle avec des cactus devant les pyramides" → "A bear juggling cacti in front of the Egyptian pyramids"`;
+
+  const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ],
+    max_tokens: 100
+  });
+
+  console.log('Enriched result:', response.response);
+
+  return new Response(JSON.stringify({ enriched: response.response }), {
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
+}
+
+// Image generation using FLUX
+async function handleImageGeneration(request, env) {
+  const { prompt, steps } = await request.json();
+
+  console.log('Generating image for prompt:', prompt);
+
+  // Flux 1 Schnell with configurable steps
+  const aiResponse = await env.AI.run(
+    '@cf/black-forest-labs/flux-1-schnell',
+    {
+      prompt: prompt,
+      num_steps: steps || 6
+    }
+  );
+
+  // Convert base64 to binary
+  const binaryString = atob(aiResponse.image);
+  const imageBytes = Uint8Array.from(binaryString, (char) => char.codePointAt(0));
+
+  return new Response(imageBytes, {
+    headers: {
+      'Content-Type': 'image/png',
+      'Access-Control-Allow-Origin': '*',
+    },
+  });
+}

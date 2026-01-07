@@ -697,16 +697,43 @@
             }
         }
 
+        // Enrich prompt using LLM (translates + adds kid-friendly context)
+        async function enrichPrompt(userPrompt) {
+            try {
+                const response = await fetch(WORKER_URL.replace(/\/$/, '') + '/enrich', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: userPrompt })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Enrichment failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const enriched = data.enriched?.trim();
+
+                if (enriched) {
+                    console.log(`Enriched: "${userPrompt}" → "${enriched}"`);
+                    return enriched;
+                }
+
+                // Fallback to translation only
+                return await translateToEnglish(userPrompt);
+            } catch (error) {
+                console.warn('Enrichment failed, falling back to translation:', error);
+                return await translateToEnglish(userPrompt);
+            }
+        }
+
         async function generateImage(prompt) {
-            // Translate user prompt to English to avoid NSFW filter
-            const translatedPrompt = await translateToEnglish(prompt);
+            // Enrich prompt using LLM (translates French + adds kid-friendly context)
+            const enrichedPrompt = await enrichPrompt(prompt);
 
             // Enhanced FLUX-1 coloring book prompt
             const coloringPrompt = `
-        A high-quality children's coloring book illustration depicting exactly the following scene:
-        ${translatedPrompt}
-
-        Faithfully represent the described subjects, actions, and environment without adding extra elements or altering the scene.
+        A high-quality children's coloring book illustration:
+        ${enrichedPrompt}
 
         Clean, bold black outlines only.
         Solid white background behind all elements.
