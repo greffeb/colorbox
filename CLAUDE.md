@@ -129,6 +129,37 @@ const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=51
 **Does NOT cache**: Generated images (too large, would fill cache)
 **Offline behavior**: App shell loads, but image generation requires network
 
+### ⚠️ CRITICAL: Cache Version Management
+
+**ALWAYS increment the `CACHE_NAME` version in `sw.js` when making ANY changes to:**
+- `index.html` (HTML/CSS/JavaScript)
+- `manifest.json`
+- Icons or other static assets
+
+**Current version format**: `colorbox-vX` (e.g., `colorbox-v7`)
+
+**Why this is critical**:
+- PWA users (especially on mobile) will continue seeing the old cached version
+- The Service Worker won't update cached files unless `CACHE_NAME` changes
+- Users may need to force refresh or reinstall the PWA otherwise
+
+**Example**:
+```javascript
+// Before making changes
+const CACHE_NAME = 'colorbox-v7';
+
+// After making ANY modification to index.html or other assets
+const CACHE_NAME = 'colorbox-v8';  // ← ALWAYS increment!
+```
+
+**Deployment workflow**:
+1. Make your code changes to `index.html` or other files
+2. Increment `CACHE_NAME` in `sw.js` (v7 → v8, v8 → v9, etc.)
+3. Commit both changes together
+4. Deploy to production
+
+This ensures mobile users automatically receive the updated version when they next open the app.
+
 ## Modifying the Application
 
 ### Changing Image Generation API
