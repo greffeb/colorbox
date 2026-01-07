@@ -701,19 +701,44 @@
             // Translate user prompt to English to avoid NSFW filter
             const translatedPrompt = await translateToEnglish(prompt);
 
-            // Build the coloring book prompt
-            const coloringPrompt = `A high-quality coloring book page for kids featuring ${translatedPrompt}. Clean, bold black outlines, solid white background. Minimalist line art, vector style, no gradients, no gray tones, no shading. Thick outer lines with fine inner details. Professional coloring book aesthetic, 8k resolution, crisp edges`;
+            // Enhanced FLUX-1 coloring book prompt
+            const coloringPrompt = `
+        A high-quality children's coloring book illustration depicting exactly the following scene:
+        ${translatedPrompt}
+
+        Faithfully represent the described subjects, actions, and environment without adding extra elements or altering the scene.
+
+        Clean, bold black outlines only.
+        Solid white background behind all elements.
+        No color, no grayscale, no gradients, no shading, no textures, no shadows.
+
+        Clear, readable composition suitable for children.
+        Thick outer contour lines, thinner inner detail lines.
+        Smooth vector-style line art.
+        Professional kids coloring book aesthetic.
+        Crisp edges, high clarity, printable quality.
+        `.trim();
+
+            const negativePrompt = `
+        color, grayscale, gray, gradient, shading, shadow, texture,
+        photorealistic, realistic, dark, horror, scary, abstract,
+        messy lines, sketchy lines, thin outlines,
+        cluttered background, noisy background,
+        watermark, text, logo
+        `.trim();
+
             console.log('Generating image via Cloudflare Worker:', coloringPrompt);
 
             try {
-                // Call our Cloudflare Worker (no CORS issues!)
                 const response = await fetch(WORKER_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        prompt: coloringPrompt
+                        prompt: coloringPrompt,
+                        negative_prompt: negativePrompt,
+                        steps: 6
                     })
                 });
 
@@ -723,11 +748,9 @@
                     throw new Error(`API request failed: ${response.status}`);
                 }
 
-                // Response is binary image data (blob)
                 const blob = await response.blob();
                 console.log('Image blob received, size:', blob.size);
 
-                // Convert blob to data URL
                 const dataUrl = await blobToDataUrl(blob);
                 console.log('Image generation complete! Data URL length:', dataUrl.length);
 
