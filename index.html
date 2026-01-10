@@ -617,6 +617,7 @@
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let pendingTranscript = '';  // Store transcript while button held (true push-to-talk)
+        let lastResultIndex = 0;  // Track which results we've already processed
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
@@ -625,17 +626,25 @@
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
-                const transcript = Array.from(event.results)
+                // Only process NEW results (from lastResultIndex onwards)
+                // This prevents duplication when recognition restarts
+                const newTranscript = Array.from(event.results)
+                    .slice(lastResultIndex)
                     .map(result => result[0].transcript)
                     .join('');
 
-                // Store transcript, don't submit yet (wait for button release)
-                pendingTranscript = transcript;
+                // Append new text to pending transcript
+                if (newTranscript.trim()) {
+                    pendingTranscript += newTranscript;
+                }
+
+                // Update the index to track processed results
+                lastResultIndex = event.results.length;
 
                 // Show live preview in recording UI
                 const recordingText = document.querySelector('.recording-text');
-                if (recordingText && transcript.trim()) {
-                    recordingText.textContent = transcript;
+                if (recordingText && pendingTranscript.trim()) {
+                    recordingText.textContent = pendingTranscript;
                 }
             };
 
@@ -885,6 +894,7 @@
 
             state.isRecording = true;
             pendingTranscript = '';  // Clear any previous transcript
+            lastResultIndex = 0;  // Reset result index for new recording
             elements.pushButton.classList.add('recording');
             setState('recording');
 
