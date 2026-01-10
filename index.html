@@ -625,19 +625,27 @@
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
-                // Reconstruct the full transcript from all results
-                // (interim results already contain the full text up to that point)
-                const transcript = Array.from(event.results)
-                    .map(result => result[0].transcript)
-                    .join('');
+                // Build transcript from final results + last interim result
+                let transcript = '';
+
+                for (let i = 0; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    if (result.isFinal) {
+                        // Add final results
+                        transcript += result[0].transcript + ' ';
+                    } else if (i === event.results.length - 1) {
+                        // Only add the LAST interim result (it contains the full interim text)
+                        transcript += result[0].transcript;
+                    }
+                }
 
                 // Store the complete transcript (don't append, replace)
-                pendingTranscript = transcript;
+                pendingTranscript = transcript.trim();
 
                 // Show live preview in recording UI
                 const recordingText = document.querySelector('.recording-text');
-                if (recordingText && transcript.trim()) {
-                    recordingText.textContent = transcript;
+                if (recordingText && pendingTranscript) {
+                    recordingText.textContent = pendingTranscript;
                 }
             };
 
