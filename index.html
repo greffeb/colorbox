@@ -616,7 +616,8 @@
         // ============ Speech Recognition ============
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
-        let pendingTranscript = '';  // Store transcript while button held (true push-to-talk)
+        let pendingTranscript = '';  // Accumulated final transcript
+        let processedFinalResults = 0;  // Track which final results we've already processed
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
@@ -624,28 +625,42 @@
             recognition.continuous = true;  // Keep listening until button released
             recognition.interimResults = true;
 
-            recognition.onresult = (event) => {
-                // Build transcript from final results + last interim result
-                let transcript = '';
+            recognition.onstart = () => {
+                // Reset processed count when recognition (re)starts
+                // (event.results resets to empty when recognition restarts)
+                processedFinalResults = 0;
+            };
 
-                for (let i = 0; i < event.results.length; i++) {
-                    const result = event.results[i];
-                    if (result.isFinal) {
-                        // Add final results
-                        transcript += result[0].transcript + ' ';
-                    } else if (i === event.results.length - 1) {
-                        // Only add the LAST interim result (it contains the full interim text)
-                        transcript += result[0].transcript;
+            recognition.onresult = (event) => {
+                let newFinalText = '';
+                let interimText = '';
+
+                // Process only NEW final results (from processedFinalResults onwards)
+                for (let i = processedFinalResults; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        newFinalText += event.results[i][0].transcript + ' ';
+                        processedFinalResults = i + 1;
                     }
                 }
 
-                // Store the complete transcript (don't append, replace)
-                pendingTranscript = transcript.trim();
+                // Get the current interim result (last non-final result)
+                const lastResult = event.results[event.results.length - 1];
+                if (!lastResult.isFinal) {
+                    interimText = lastResult[0].transcript;
+                }
+
+                // Add new final text to accumulated transcript
+                if (newFinalText) {
+                    pendingTranscript = (pendingTranscript + ' ' + newFinalText).trim();
+                }
+
+                // Display: accumulated final + current interim
+                const displayText = (pendingTranscript + ' ' + interimText).trim();
 
                 // Show live preview in recording UI
                 const recordingText = document.querySelector('.recording-text');
-                if (recordingText && pendingTranscript) {
-                    recordingText.textContent = pendingTranscript;
+                if (recordingText && displayText) {
+                    recordingText.textContent = displayText;
                 }
             };
 
@@ -895,6 +910,7 @@
 
             state.isRecording = true;
             pendingTranscript = '';  // Clear any previous transcript
+            processedFinalResults = 0;  // Reset processed count for new recording
             elements.pushButton.classList.add('recording');
             setState('recording');
 
