@@ -526,7 +526,7 @@
         </style>
 </head>
 <body>
-    <div class="version-indicator">v5</div>
+    <div class="version-indicator">v6</div>
     <main class="display-area">
         <div class="polaroid">
             <div class="polaroid-frame">
@@ -639,29 +639,20 @@
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
-                let interimTranscript = '';  // Rebuilt each event (local)
+                let interimTranscript = '';
 
-                // Only process NEW results (from resultIndex onwards) - fixes Android stutter
+                // Only process NEW results (from resultIndex onwards)
                 for (let i = event.resultIndex; i < event.results.length; i++) {
                     const result = event.results[i];
                     if (result.isFinal) {
-                        // Append to persistent variable (not rebuilt each event)
                         accumulatedFinalTranscript += result[0].transcript + ' ';
                     } else {
                         interimTranscript += result[0].transcript;
                     }
                 }
 
-                const transcript = (accumulatedFinalTranscript + interimTranscript).trim();
-
-                // Store transcript, don't submit yet (wait for button release)
-                pendingTranscript = transcript;
-
-                // Show live preview in recording UI
-                const recordingText = document.querySelector('.recording-text');
-                if (recordingText && transcript) {
-                    recordingText.textContent = transcript;
-                }
+                // Store transcript silently (no live preview - avoids Android stutter bug)
+                pendingTranscript = (accumulatedFinalTranscript + interimTranscript).trim();
             };
 
             recognition.onerror = (event) => {
