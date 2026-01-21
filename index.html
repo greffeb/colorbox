@@ -526,7 +526,7 @@
         </style>
 </head>
 <body>
-    <div class="version-indicator">v4</div>
+    <div class="version-indicator">v5</div>
     <main class="display-area">
         <div class="polaroid">
             <div class="polaroid-frame">
@@ -630,6 +630,7 @@
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
         let pendingTranscript = '';  // Store transcript while button held (true push-to-talk)
+        let accumulatedFinalTranscript = '';  // Persists across onresult events (fixes Android stutter)
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
@@ -638,19 +639,20 @@
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
-                let finalTranscript = '';
-                let interimTranscript = '';
+                let interimTranscript = '';  // Rebuilt each event (local)
 
-                for (let i = 0; i < event.results.length; i++) {
+                // Only process NEW results (from resultIndex onwards) - fixes Android stutter
+                for (let i = event.resultIndex; i < event.results.length; i++) {
                     const result = event.results[i];
                     if (result.isFinal) {
-                        finalTranscript += result[0].transcript + ' ';
+                        // Append to persistent variable (not rebuilt each event)
+                        accumulatedFinalTranscript += result[0].transcript + ' ';
                     } else {
                         interimTranscript += result[0].transcript;
                     }
                 }
 
-                const transcript = (finalTranscript + interimTranscript).trim();
+                const transcript = (accumulatedFinalTranscript + interimTranscript).trim();
 
                 // Store transcript, don't submit yet (wait for button release)
                 pendingTranscript = transcript;
@@ -908,6 +910,7 @@
 
             state.isRecording = true;
             pendingTranscript = '';  // Clear any previous transcript
+            accumulatedFinalTranscript = '';  // Reset for new recording session
             elements.pushButton.classList.add('recording');
             setState('recording');
 
