@@ -526,7 +526,7 @@
         </style>
 </head>
 <body>
-    <div class="version-indicator">v6</div>
+    <div class="version-indicator">v7</div>
     <main class="display-area">
         <div class="polaroid">
             <div class="polaroid-frame">
@@ -639,42 +639,49 @@
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
-                let interimTranscript = '';
+                let currentSessionTranscript = '';
 
-                // Only process NEW results (from resultIndex onwards)
-                for (let i = event.resultIndex; i < event.results.length; i++) {
+                // Reconstruct full transcript from scratch for this session to avoid Android duplication
+                for (let i = 0; i < event.results.length; i++) {
                     const result = event.results[i];
-                    if (result.isFinal) {
-                        accumulatedFinalTranscript += result[0].transcript + ' ';
-                    } else {
-                        interimTranscript += result[0].transcript;
-                    }
+                    currentSessionTranscript += result[0].transcript;
                 }
 
-                // Store transcript silently (no live preview - avoids Android stutter bug)
-                pendingTranscript = (accumulatedFinalTranscript + interimTranscript).trim();
+                // pendingTranscript = (Text from previous sessions before pause) + (Text from current session)
+                pendingTranscript = (accumulatedFinalTranscript + ' ' + currentSessionTranscript).trim();
             };
 
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
                 if (event.error === 'no-speech') {
-                    showToast("Je n'ai rien entendu, réessaie !");
-                    setState('idle');
+                    // Ignore no-speech errors while holding button (just silence)
+                    if (!state.isRecording) {
+                        showToast("Je n'ai rien entendu, réessaie !");
+                        setState('idle');
+                    }
                 } else if (event.error === 'not-allowed') {
                     showError("🎤 Autorise l'accès au micro dans les paramètres de Chrome !\n\nMenu ⋮ → Paramètres → Paramètres du site → Microphone");
+                    stopRecording();
                 } else if (event.error !== 'aborted') {
-                    showError("Problème avec le micro. Vérifie les permissions.");
+                    // unexpected error
+                    console.warn('Mic error:', event.error);
+                    stopRecording();
+                    showError("Problème avec le micro. (" + event.error + ")");
                 }
-                stopRecording();
             };
 
             recognition.onend = () => {
-                // If button still held, restart recognition (handles browser timeout)
+                // If button still held, restart recognition (handles browser timeout/silence)
                 if (state.isRecording) {
+                    // Commit what we heard so far to the permanent buffer
+                    if (pendingTranscript) {
+                        accumulatedFinalTranscript = pendingTranscript; 
+                    }
+                    
                     try {
                         recognition.start();
                     } catch (e) {
-                        // Already started or other error, ignore
+                        console.log('Restart ignored', e);
                     }
                 }
             };
