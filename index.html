@@ -532,7 +532,7 @@
         </style>
 </head>
 <body>
-    <div class="version-indicator">v14</div>
+    <div class="version-indicator">v15</div>
     <main class="display-area">
         <div class="polaroid">
             <div class="polaroid-frame">
@@ -737,6 +737,28 @@
         // ============ Image Generation ============
         const WORKER_URL = 'https://colorbox-image-api.greffe-b.workers.dev/';
 
+        // System prompt for LLM enrichment (moved from worker for easier editing)
+        const ENRICHMENT_SYSTEM_PROMPT = `You enrich simple ideas into children's coloring book scenes.
+
+IMPORTANT: If the prompt is already detailed (has background, clothes, pose, or activity), KEEP their details! Only translate to English. Do NOT replace their scene with generic elements.
+
+For SIMPLE prompts (just a subject like "un chat"):
+- Add a cute interpretation, simple action, and playful environment
+
+For DETAILED prompts (already has context):
+- Just translate to English and keep ALL their specific details
+
+CRITICAL RULES:
+- NEVER mention colors (no "red", "blue", "grey", "bright", etc.)
+- NEVER describe textures (no "fluffy", "soft", "shiny")
+- Keep it to 1 sentence maximum
+- Respond in English only
+
+Examples:
+"un chat" → "A cute cat sitting in a garden with butterflies and flowers"
+"un renard qui fait de la moto et qui porte un pyjama rayé" → "A fox riding a motorcycle wearing striped pajamas"
+"un ours qui jongle avec des cactus devant les pyramides" → "A bear juggling cacti in front of the Egyptian pyramids"`;
+
         // Translate French to English to avoid NSFW false positives
         async function translateToEnglish(frenchText) {
             try {
@@ -764,7 +786,10 @@
                 const response = await fetch(WORKER_URL.replace(/\/$/, '') + '/enrich', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: userPrompt })
+                    body: JSON.stringify({
+                        prompt: userPrompt,
+                        systemPrompt: ENRICHMENT_SYSTEM_PROMPT
+                    })
                 });
 
                 if (!response.ok) {
