@@ -554,7 +554,7 @@
                 <div class="state state-error" id="stateError">
                     <div class="error-icon">😕</div>
                     <p class="error-text" id="errorText">Oups, quelque chose n'a pas marché</p>
-                    <button class="retry-btn" id="retryBtn">Réessayer</button>
+                    <button class="retry-btn" id="retryBtn">Réessaye</button>
                 </div>
             </div>
             <div class="polaroid-caption" id="polaroidCaption"></div>
@@ -787,26 +787,26 @@
 
             // Enhanced FLUX-1 coloring book prompt
             const coloringPrompt = `
-        A high-quality children's coloring book illustration:
-        ${enrichedPrompt}
-
-        Clean, bold black outlines only.
-        Solid white background behind all elements.
-        No color, no grayscale, no gradients, no shading, no textures, no shadows.
-
-        Clear, readable composition suitable for children.
-        Thick outer contour lines, thinner inner detail lines.
-        Smooth vector-style line art.
-        Professional kids coloring book aesthetic.
-        Crisp edges, high clarity, printable quality.
-        `.trim();
+            Children's coloring book illustration in a cute kawaii-inspired cartoon style:
+            ${enrichedPrompt}
+            
+            Style: Whimsical, cheerful, appealing to children aged 3-8.
+            Composition: Subject fills 60-70% of frame, with supporting background elements around edges.
+            Character design: Round friendly shapes, large expressive eyes, simple cute proportions.
+            
+            Technical requirements:
+            - Clean bold black outlines only on pure white background
+            - Thick outer contours (3-4px), medium inner details (1-2px)
+            - No color, no grayscale, no gradients, no shading, no fills, no textures
+            - Smooth vector-style line art with crisp edges
+            - Clear enclosed shapes suitable for coloring
+            - High contrast, print-ready quality
+            `.trim();
 
             const negativePrompt = `
-        color, grayscale, gray, gradient, shading, shadow, texture,
+        color, grayscale, gray, gradient, texture,
         photorealistic, realistic, dark, horror, scary, abstract,
-        messy lines, sketchy lines, thin outlines,
-        cluttered background, noisy background,
-        watermark, text, logo
+        messy lines, sketchy lines, thin outlines, watermark, text, logo
         `.trim();
 
             console.log('Generating image via Cloudflare Worker:', coloringPrompt);
