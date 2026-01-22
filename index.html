@@ -103,9 +103,9 @@
             font-weight: 500;
             color: #2d2d2d;
             text-align: center;
-            padding: 4px 10px;
-            height: 58px;
-            line-height: 1.25;
+            padding: 6px 10px;
+            height: 66px;
+            line-height: 1.2;
             word-wrap: break-word;
             overflow-wrap: break-word;
             hyphens: auto;
@@ -113,6 +113,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
         }
 
         .state {
@@ -532,7 +533,7 @@
         </style>
 </head>
 <body>
-    <div class="version-indicator">v10</div>
+    <div class="version-indicator">v11</div>
     <main class="display-area">
         <div class="polaroid">
             <div class="polaroid-frame">
@@ -901,23 +902,39 @@
 
             elements.polaroidCaption.textContent = displayText;
 
-            // Dynamic font sizing based on text length
-            const length = displayText.length;
-            let fontSize;
+            // Dynamic font sizing - find the largest size that fits
+            const maxHeight = 66; // Available height for caption (matches CSS height)
+            const minFontSize = 14;
+            const maxFontSize = 42;
 
-            if (length < 15) {
-                fontSize = '36px';  // Massive for very short text
-            } else if (length < 35) {
-                fontSize = '28px';  // Large for short text
-            } else if (length < 60) {
-                fontSize = '22px';  // Medium for medium text
-            } else if (length < 90) {
-                fontSize = '18px';  // Small for long text
-            } else {
-                fontSize = '15px';  // Very small for very long text
+            // Start with an estimated size based on text length
+            let fontSize = maxFontSize;
+            if (displayText.length > 15) fontSize = 36;
+            if (displayText.length > 25) fontSize = 30;
+            if (displayText.length > 40) fontSize = 26;
+            if (displayText.length > 60) fontSize = 22;
+            if (displayText.length > 80) fontSize = 18;
+            if (displayText.length > 100) fontSize = 15;
+
+            // Fine-tune by measuring actual height
+            elements.polaroidCaption.style.fontSize = fontSize + 'px';
+
+            // Try to increase font size if there's room
+            while (fontSize < maxFontSize && elements.polaroidCaption.scrollHeight <= maxHeight) {
+                fontSize += 2;
+                elements.polaroidCaption.style.fontSize = fontSize + 'px';
             }
 
-            elements.polaroidCaption.style.fontSize = fontSize;
+            // Reduce if text overflows
+            while (fontSize > minFontSize && elements.polaroidCaption.scrollHeight > maxHeight) {
+                fontSize -= 1;
+                elements.polaroidCaption.style.fontSize = fontSize + 'px';
+            }
+
+            // Final adjustment to ensure it fits
+            if (elements.polaroidCaption.scrollHeight > maxHeight) {
+                elements.polaroidCaption.style.fontSize = minFontSize + 'px';
+            }
         }
 
         // ============ Recording Functions ============
