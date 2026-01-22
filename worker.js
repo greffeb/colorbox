@@ -43,11 +43,12 @@ export default {
 
 // LLM prompt enrichment using Llama 3.1
 async function handleEnrich(request, env) {
-  const { prompt } = await request.json();
+  const { prompt, systemPrompt } = await request.json();
 
   console.log('Enriching prompt:', prompt);
 
-  const systemPrompt = `You enrich simple ideas into children's coloring book scenes.
+  // Default system prompt (fallback for backwards compatibility)
+  const defaultSystemPrompt = `You enrich simple ideas into children's coloring book scenes.
 
 IMPORTANT: If the prompt is already detailed (has background, clothes, pose, or activity), KEEP their details! Only translate to English. Do NOT replace their scene with generic elements.
 
@@ -68,9 +69,12 @@ Examples:
 "un renard qui fait de la moto et qui porte un pyjama rayé" → "A fox riding a motorcycle wearing striped pajamas"
 "un ours qui jongle avec des cactus devant les pyramides" → "A bear juggling cacti in front of the Egyptian pyramids"`;
 
+  // Use provided system prompt or fall back to default
+  const finalSystemPrompt = systemPrompt || defaultSystemPrompt;
+
   const response = await env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
     messages: [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: finalSystemPrompt },
       { role: 'user', content: prompt }
     ],
     max_tokens: 100
