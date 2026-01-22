@@ -526,7 +526,7 @@
         </style>
 </head>
 <body>
-    <div class="version-indicator">v8</div>
+    <div class="version-indicator">v9</div>
     <main class="display-area">
         <div class="polaroid">
             <div class="polaroid-frame">
@@ -627,60 +627,54 @@
         };
 
         // ============ Speech Recognition ============
+        // REWRITTEN FOR ANDROID CHROME COMPATIBILITY
+        //
+        // Problem: On Android Chrome, Web Speech API returns results differently than Desktop.
+        // Each result in event.results contains the CUMULATIVE transcript up to that point,
+        // not separate segments. If you concatenate all results, you get duplication:
+        // results[0]="mouton", results[1]="mouton qui fait" → "mouton" + "mouton qui fait" = stutter
+        //
+        // Solution: Only use the LAST result (contains the complete current transcript).
+        // When recognition restarts (silence timeout), save the transcript and continue.
+
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
 
-        // Push-to-talk transcript management (fixes Android stutter bug)
-        // - finalTranscript: confirmed words that won't change (isFinal=true)
-        // - interimTranscript: current hypothesis, rebuilt each event
-        // - accumulatedBeforeRestart: saves finalTranscript when recognition restarts on silence
-        let finalTranscript = '';
-        let interimTranscript = '';
-        let accumulatedBeforeRestart = '';
+        // Transcript management for push-to-talk
+        let currentSessionTranscript = '';  // Latest transcript from active recognition
+        let savedTranscript = '';           // Accumulated text from previous recognition sessions
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
             recognition.lang = 'fr-FR';
-            recognition.continuous = true;  // Keep listening until button released
-            recognition.interimResults = true;
+            recognition.continuous = true;   // Keep listening until button released
+            recognition.interimResults = true;  // Show text as user speaks
 
             recognition.onresult = (event) => {
-                // CRITICAL FIX for Android Chrome:
-                // Use event.resultIndex to only process NEW results
-                // Final results (isFinal=true) are appended ONCE to finalTranscript
-                // Interim results are rebuilt from scratch each time (they can change)
+                // ANDROID FIX: Only use the LAST result
+                // On Android, each result contains the FULL transcript up to that point
+                // So the last result has everything we need - don't concatenate!
 
-                interimTranscript = '';
-
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                    const result = event.results[i];
-                    const transcript = result[0].transcript;
-
-                    if (result.isFinal) {
-                        // Final result: append to persistent transcript (only counted once)
-                        finalTranscript += transcript;
-                    } else {
-                        // Interim result: just for display, may change
-                        interimTranscript += transcript;
-                    }
+                if (event.results.length > 0) {
+                    const lastIndex = event.results.length - 1;
+                    currentSessionTranscript = event.results[lastIndex][0].transcript;
                 }
 
-                // Update live display (show what user is saying)
-                const displayText = (accumulatedBeforeRestart + finalTranscript + interimTranscript).trim();
+                // Update live display
+                const fullText = (savedTranscript + ' ' + currentSessionTranscript).trim();
                 const recordingText = document.querySelector('.recording-text');
-                if (recordingText && displayText) {
-                    // Show preview of what's being transcribed
-                    const previewText = displayText.length > 50
-                        ? '...' + displayText.slice(-47)
-                        : displayText;
-                    recordingText.textContent = previewText;
+                if (recordingText && fullText) {
+                    const preview = fullText.length > 50
+                        ? '...' + fullText.slice(-47)
+                        : fullText;
+                    recordingText.textContent = preview;
                 }
             };
 
             recognition.onerror = (event) => {
                 console.error('Speech recognition error:', event.error);
                 if (event.error === 'no-speech') {
-                    // Ignore no-speech errors while holding button (just silence)
+                    // Silence while holding button - ignore, onend will restart
                     if (!state.isRecording) {
                         showToast("Je n'ai rien entendu, réessaie !");
                         setState('idle');
@@ -689,7 +683,6 @@
                     showError("🎤 Autorise l'accès au micro dans les paramètres de Chrome !\n\nMenu ⋮ → Paramètres → Paramètres du site → Microphone");
                     stopRecording();
                 } else if (event.error !== 'aborted') {
-                    // unexpected error
                     console.warn('Mic error:', event.error);
                     stopRecording();
                     showError("Problème avec le micro. (" + event.error + ")");
@@ -697,17 +690,19 @@
             };
 
             recognition.onend = () => {
-                // If button still held, restart recognition (handles browser timeout/silence)
+                // Recognition stopped (silence timeout or manually stopped)
                 if (state.isRecording) {
-                    // Save what we have before restart (recognition resets results array)
-                    accumulatedBeforeRestart += finalTranscript + interimTranscript;
-                    finalTranscript = '';
-                    interimTranscript = '';
+                    // Button still held - save progress and restart
+                    if (currentSessionTranscript) {
+                        savedTranscript = (savedTranscript + ' ' + currentSessionTranscript).trim();
+                        currentSessionTranscript = '';
+                    }
 
+                    // Restart recognition to continue listening
                     try {
                         recognition.start();
                     } catch (e) {
-                        console.log('Restart ignored', e);
+                        console.log('Restart ignored:', e.message);
                     }
                 }
             };
@@ -934,10 +929,9 @@
 
             state.isRecording = true;
 
-            // Reset all transcript buffers for new recording session
-            finalTranscript = '';
-            interimTranscript = '';
-            accumulatedBeforeRestart = '';
+            // Reset transcript buffers for new recording session
+            currentSessionTranscript = '';
+            savedTranscript = '';
 
             elements.pushButton.classList.add('recording');
             setState('recording');
@@ -966,16 +960,12 @@
                 // Ignore errors when stopping
             }
 
-            // Combine all transcript parts for final submission
-            // accumulatedBeforeRestart: text from before any recognition restart
-            // finalTranscript: confirmed text from current recognition session
-            // interimTranscript: unconfirmed hypothesis (include it since user released button)
-            const fullTranscript = (accumulatedBeforeRestart + finalTranscript + interimTranscript).trim();
+            // Combine saved transcript (from restarts) + current session transcript
+            const fullTranscript = (savedTranscript + ' ' + currentSessionTranscript).trim();
 
             // Clear for next recording
-            finalTranscript = '';
-            interimTranscript = '';
-            accumulatedBeforeRestart = '';
+            currentSessionTranscript = '';
+            savedTranscript = '';
 
             if (fullTranscript) {
                 handleVoiceInput(fullTranscript);
