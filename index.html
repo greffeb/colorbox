@@ -526,7 +526,7 @@
         </style>
 </head>
 <body>
-    <div class="version-indicator">v7</div>
+    <div class="version-indicator">v8</div>
     <main class="display-area">
         <div class="polaroid">
             <div class="polaroid-frame">
@@ -629,8 +629,14 @@
         // ============ Speech Recognition ============
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         let recognition = null;
-        let pendingTranscript = '';  // Store transcript while button held (true push-to-talk)
-        let accumulatedFinalTranscript = '';  // Persists across onresult events (fixes Android stutter)
+
+        // Push-to-talk transcript management (fixes Android stutter bug)
+        // - finalTranscript: confirmed words that won't change (isFinal=true)
+        // - interimTranscript: current hypothesis, rebuilt each event
+        // - accumulatedBeforeRestart: saves finalTranscript when recognition restarts on silence
+        let finalTranscript = '';
+        let interimTranscript = '';
+        let accumulatedBeforeRestart = '';
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
@@ -639,16 +645,36 @@
             recognition.interimResults = true;
 
             recognition.onresult = (event) => {
-                let currentSessionTranscript = '';
+                // CRITICAL FIX for Android Chrome:
+                // Use event.resultIndex to only process NEW results
+                // Final results (isFinal=true) are appended ONCE to finalTranscript
+                // Interim results are rebuilt from scratch each time (they can change)
 
-                // Reconstruct full transcript from scratch for this session to avoid Android duplication
-                for (let i = 0; i < event.results.length; i++) {
+                interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
                     const result = event.results[i];
-                    currentSessionTranscript += result[0].transcript;
+                    const transcript = result[0].transcript;
+
+                    if (result.isFinal) {
+                        // Final result: append to persistent transcript (only counted once)
+                        finalTranscript += transcript;
+                    } else {
+                        // Interim result: just for display, may change
+                        interimTranscript += transcript;
+                    }
                 }
 
-                // pendingTranscript = (Text from previous sessions before pause) + (Text from current session)
-                pendingTranscript = (accumulatedFinalTranscript + ' ' + currentSessionTranscript).trim();
+                // Update live display (show what user is saying)
+                const displayText = (accumulatedBeforeRestart + finalTranscript + interimTranscript).trim();
+                const recordingText = document.querySelector('.recording-text');
+                if (recordingText && displayText) {
+                    // Show preview of what's being transcribed
+                    const previewText = displayText.length > 50
+                        ? '...' + displayText.slice(-47)
+                        : displayText;
+                    recordingText.textContent = previewText;
+                }
             };
 
             recognition.onerror = (event) => {
@@ -673,11 +699,11 @@
             recognition.onend = () => {
                 // If button still held, restart recognition (handles browser timeout/silence)
                 if (state.isRecording) {
-                    // Commit what we heard so far to the permanent buffer
-                    if (pendingTranscript) {
-                        accumulatedFinalTranscript = pendingTranscript; 
-                    }
-                    
+                    // Save what we have before restart (recognition resets results array)
+                    accumulatedBeforeRestart += finalTranscript + interimTranscript;
+                    finalTranscript = '';
+                    interimTranscript = '';
+
                     try {
                         recognition.start();
                     } catch (e) {
@@ -907,8 +933,12 @@
             }
 
             state.isRecording = true;
-            pendingTranscript = '';  // Clear any previous transcript
-            accumulatedFinalTranscript = '';  // Reset for new recording session
+
+            // Reset all transcript buffers for new recording session
+            finalTranscript = '';
+            interimTranscript = '';
+            accumulatedBeforeRestart = '';
+
             elements.pushButton.classList.add('recording');
             setState('recording');
 
@@ -936,12 +966,19 @@
                 // Ignore errors when stopping
             }
 
-            // Submit transcript on button release
-            const transcript = pendingTranscript;
-            pendingTranscript = '';  // Clear for next recording
+            // Combine all transcript parts for final submission
+            // accumulatedBeforeRestart: text from before any recognition restart
+            // finalTranscript: confirmed text from current recognition session
+            // interimTranscript: unconfirmed hypothesis (include it since user released button)
+            const fullTranscript = (accumulatedBeforeRestart + finalTranscript + interimTranscript).trim();
 
-            if (transcript.trim()) {
-                handleVoiceInput(transcript);
+            // Clear for next recording
+            finalTranscript = '';
+            interimTranscript = '';
+            accumulatedBeforeRestart = '';
+
+            if (fullTranscript) {
+                handleVoiceInput(fullTranscript);
             } else {
                 // Button released with no speech detected
                 showToast("Je n'ai rien compris, réessaie !");
