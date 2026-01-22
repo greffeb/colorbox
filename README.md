@@ -1,128 +1,206 @@
-# ColorBox - Générateur de Coloriages par la Voix 🎨
+# ColorBox
 
-Une PWA qui reproduit le concept de la StickerBox : génération de coloriages pour enfants via commande vocale.
+A Progressive Web App (PWA) that generates kid-friendly coloring pages from voice input using AI. Built with vanilla JavaScript and the FLUX-1 model.
 
-## Fonctionnalités
+## Features
 
-- **Push-to-talk** : Maintiens le bouton et décris ton dessin
-- **Reconnaissance vocale** : Utilise l'API Web Speech (native au navigateur)
-- **Génération d'images** : Via Perchance API (gratuit, sans clé)
-- **Filtre kid-friendly** : Bloque les contenus inappropriés
-- **Historique** : Sauvegarde les 20 derniers dessins
-- **Partage/Impression** : Via Web Share API ou impression directe
+- **Voice-driven interface**: Push-to-talk with Web Speech API (French)
+- **AI image generation**: Cloudflare Worker + FLUX-1 Schnell model
+- **Smart prompt enrichment**: Llama 3.1 8B refines user input
+- **Kid-friendly filtering**: Content safety layer blocks inappropriate requests
+- **PWA capabilities**: Install on Android, works offline (app shell only)
+- **Zero-build architecture**: Single HTML file, no npm, no bundlers
 
-## Installation sur Android
+## Tech Stack
 
-Pour que le microphone fonctionne, le site doit être sécurisé (HTTPS) ou être considéré comme "localhost".
+- **Frontend**: Vanilla HTML/CSS/JavaScript (~1162 lines, single file)
+- **Speech Recognition**: Web Speech API (browser-native, fr-FR)
+- **Image Generation**: FLUX-1 Schnell via Cloudflare Workers AI
+- **Prompt Enhancement**: Llama 3.1 8B (Cloudflare Workers AI)
+- **Translation**: MyMemory API (French → English)
+- **Storage**: localStorage (last 20 drawings, base64 encoded)
+- **PWA**: Service Worker for offline app shell
 
-### Option 1 : Test local via USB (Recommandé)
-Cette méthode permet d'utiliser le micro sans déployer le site.
+## Quick Start
 
-1.  Sur ton PC : Lance le serveur (`python3 -m http.server 8000`).
-2.  Connecte ton téléphone au PC via USB.
-3.  Active le **Débogage USB** sur le téléphone (dans les Options développeur).
-4.  Sur Chrome PC : Ouvre `chrome://inspect/#devices`.
-5.  Coche "Port forwarding" et clique sur "Configure...".
-6.  Ajoute : Port `8000`, IP `localhost:8000`.
-7.  Sur Chrome Android : Ouvre `http://localhost:8000`.
-    *   Le site croira qu'il est sur le téléphone, et le micro fonctionnera !
+### Local Development
 
-### Option 2 : Déploiement (Le plus simple pour usage réel)
-Pour une installation permanente sans câbles.
+1. Clone the repository:
+```bash
+git clone https://github.com/greffeb/colorbox.git
+cd colorbox
+```
 
-1.  **GitHub Pages** :
-    *   Push le dossier sur GitHub.
-    *   Settings > Pages > Deploy from branch.
-2.  **Vercel / Netlify** :
-    *   Glisse le dossier sur leur interface d'upload.
+2. Start a local server (required for microphone access and PWA features):
+```bash
+python3 -m http.server 8080
+```
 
-### Installation PWA
-Une fois l'app ouverte dans Chrome Android :
-1.  Un bandeau "Ajouter à l'écran d'accueil" peut apparaître.
-2.  Sinon : Menu (⋮) > "Ajouter à l'écran d'accueil" ou "Installer l'application".
-3.  L'app apparaîtra avec son icône dans tes applications.
+3. Open http://localhost:8080 in Chrome or Edge
 
-## Utilisation
+> **Note**: HTTPS or localhost is required for microphone access, PWA installation, and Service Worker registration.
 
-1. Appuie et maintiens le gros bouton 🎤
-2. Décris ton dessin ("un chat astronaute", "un dinosaure qui fait du vélo")
-3. Relâche le bouton
-4. Attends la génération (~10-30 secondes)
-5. Partage ou imprime via le bouton 📤
+### Deployment
 
-## API d'images alternatives
+The app has no build step - deploy the files as-is to any static host:
 
-Si Perchance ne fonctionne pas bien, voici des alternatives :
+- **GitHub Pages**: Push repo → Settings > Pages
+- **Netlify**: Drag & drop folder to [Netlify Drop](https://app.netlify.com/drop)
+- **Vercel**: `npx vercel`
 
-### Pollinations AI (gratuit, sans clé)
+### Cloudflare Worker Deployment
+
+The image generation API (`worker.js`) must be deployed separately to Cloudflare Workers:
+
+1. Install Wrangler CLI: `npm install -g wrangler`
+2. Authenticate: `wrangler login`
+3. Deploy: `wrangler deploy worker.js`
+4. Update `WORKER_URL` in `index.html` with your Worker URL
+
+> Requires Cloudflare Workers AI access and appropriate API keys configured in Worker environment.
+
+## Architecture
+
+### Application Flow
+
+1. User holds button → Web Speech API transcribes (French)
+2. Content filter checks for inappropriate words
+3. French prompt → English (MyMemory API)
+4. English prompt → Enriched prompt (Llama 3.1 8B)
+5. Enriched prompt → Coloring page image (FLUX-1 Schnell)
+6. Image saved to localStorage as base64 data URL
+7. User can share (Web Share API) or print
+
+### State Machine
+
+The app uses 5 UI states:
+- `idle`: Initial state, awaiting user input
+- `recording`: Microphone active, transcribing
+- `generating`: API requests in progress
+- `result`: Image displayed
+- `error`: Generation failed, retry available
+
+### Content Safety
+
+Single-layer filtering with 27 blocked French terms:
+- Categories: nudity, violence, drugs, weapons, horror
+- Checked before API calls
+- Triggers friendly error message if detected
+
+### Service Worker Strategy
+
+- **Cached**: `index.html`, `manifest.json`, icons
+- **Not cached**: Generated images (too large)
+
+## Development Guidelines
+
+### Making Changes to index.html
+
+1. Make your code changes
+2. Increment `CACHE_NAME` in `sw.js` (e.g., v15 → v16)
+3. Update version indicator in `index.html` (`.version-indicator` div)
+4. Test locally with `python3 -m http.server 8080`
+5. Deploy both files together
+
+> Without incrementing the cache version, PWA users will continue seeing the old version.
+
+### Modifying the Image Generation
+
+Edit `generateImage()` in [index.html:820-841](index.html#L820-L841):
+- Adjust `coloringPrompt` template for style changes
+- Modify `negativePrompt` to exclude unwanted elements
+- Change `steps` parameter (default: 6) for quality/speed tradeoff
+
+### Adjusting Content Filter
+
+Add/remove words in `blockedWords` array ([index.html:718-725](index.html#L718-L725)).
+
+### Changing History Limit
+
+Default: 20 items. Modify in `saveToHistory()` around [line 1098](index.html#L1098):
 ```javascript
-const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true`;
+if (state.history.length > 20) {  // Change limit here
 ```
 
-### Modifiction dans index.html
+## Browser Compatibility
 
-Remplace la fonction `generateImage()` :
+| Feature | Chrome/Edge | Firefox | Safari iOS |
+|---------|-------------|---------|------------|
+| Web Speech API | ✅ Full | ⚠️ Inconsistent | ❌ No support |
+| PWA Installation | ✅ Full | ⚠️ Limited | ⚠️ Manual only |
+| Service Worker | ✅ | ✅ | ✅ |
+| Web Share API | ✅ (Android) | ❌ | ✅ (iOS) |
 
-```javascript
-async function generateImage(prompt) {
-    const coloringPrompt = `coloring book page, ${prompt}, black and white line art, simple clean lines, cute kawaii style for children, no shading, white background`;
-    const encodedPrompt = encodeURIComponent(coloringPrompt);
-    
-    // Pollinations AI (alternative)
-    const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true`;
-    
-    const response = await fetch(imageUrl);
-    if (!response.ok) throw new Error('Image generation failed');
-    
-    const blob = await response.blob();
-    return await blobToDataUrl(blob);
-}
-```
+**Recommended**: Chrome on Android for full feature support.
 
-## Impression Brother iPrint&Scan
-
-L'app utilise le Web Share API qui permet de partager l'image vers n'importe quelle app Android, y compris Brother iPrint&Scan.
-
-Si le partage direct ne fonctionne pas :
-1. Le bouton 📤 ouvre aussi la fenêtre d'impression
-2. Tu peux sélectionner l'imprimante Brother via le service d'impression Android
-
-## Structure des fichiers
+## File Structure
 
 ```
-stickerbox/
-├── index.html      # App principale (HTML + CSS + JS)
-├── manifest.json   # Config PWA
-├── sw.js           # Service Worker (cache offline)
-├── icon-192.png    # Icône PWA
-└── icon-512.png    # Icône PWA grande
+colorbox/
+├── index.html          # Complete application (HTML + CSS + JS)
+├── manifest.json       # PWA configuration
+├── sw.js              # Service Worker (cache management)
+├── worker.js          # Cloudflare Worker source (deployed separately)
+├── icon-192.png       # PWA icon
+├── icon-512.png       # PWA icon (high-res)
+├── README.md          # This file (developer documentation)
+├── CLAUDE.md          # Detailed guide for Claude Code
+└── .gitignore         # Git exclusions
 ```
 
-## Personnalisation
+## API Dependencies
 
-### Modifier le filtre de mots
+### Required External Services
 
-Dans `index.html`, trouve `blockedWords` et ajoute/retire des mots.
+1. **Cloudflare Workers AI**
+   - FLUX-1 Schnell model for image generation
+   - Llama 3.1 8B for prompt enrichment
+   - Requires Worker deployment with AI binding
 
-### Modifier le style des dessins
+2. **MyMemory Translation API**
+   - Free tier (no API key required)
+   - Used for French → English translation
+   - Endpoint: `https://api.mymemory.translated.net/get`
 
-Modifie le prompt dans `generateImage()` :
-- `cute kawaii style` → `cartoon style` ou `disney style`
-- Ajoute `for toddlers` pour des dessins plus simples
+### API Characteristics
 
-## Dépannage
+**Image Generation**:
+- Model: FLUX-1 Schnell
+- Steps: 6 (optimized for speed)
+- Output: PNG blob (512x512px)
+- Prompt template: Optimized for coloring book style
 
-**"La reconnaissance vocale n'est pas supportée"**
-→ Utilise Chrome ou Edge (Firefox ne supporte pas toujours Web Speech)
+**Prompt Enrichment**:
+- Model: Llama 3.1 8B
+- Rules: No color words, no textures, max 1 sentence
+- Language: English output only
 
-**Images qui ne se génèrent pas**
-→ Vérifie ta connexion internet
-→ Essaie l'API Pollinations comme alternative
+## Testing
 
-**Le micro ne fonctionne pas**
-→ Vérifie les permissions du navigateur (🔒 dans la barre d'adresse)
-→ L'app doit être servie en HTTPS (ou localhost)
+When making changes, verify:
+- [ ] Voice recording works in Chrome/Edge
+- [ ] Push-to-talk submits transcript on button release
+- [ ] Content filter blocks test inappropriate words
+- [ ] Images generate successfully
+- [ ] Images save to localStorage
+- [ ] History modal displays recent items
+- [ ] Share/print functionality works
+- [ ] PWA installs on Android device
+- [ ] Service Worker updates correctly (increment CACHE_NAME!)
+- [ ] Offline: App shell loads but shows network error for generation
 
-## Licence
+## Known Limitations
 
-MIT - Fais-en ce que tu veux ! 🎉
+1. **Voice recognition**: French only (`fr-FR`), Chrome/Edge required
+2. **Browser support**: Best experience on Chrome Android
+3. **Offline generation**: Not possible (requires API calls)
+4. **Storage limits**: localStorage quota (~5-10MB), stores ~20-50 images
+5. **API dependency**: Requires deployed Cloudflare Worker with AI access
+
+## License
+
+MIT License - See LICENSE file for details.
+
+## Contributing
+
+See [CLAUDE.md](CLAUDE.md) for detailed technical documentation and development guidelines.

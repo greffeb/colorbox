@@ -13,24 +13,24 @@ ColorBox is a Progressive Web App (PWA) that generates kid-friendly coloring pag
 ### Tech Stack
 - **Frontend**: Vanilla HTML/CSS/JavaScript (no framework, no build step)
 - **Speech Recognition**: Web Speech API (browser-native, French language)
-- **Image Generation**: Cloudflare Worker with FLUX-1 model (`colorbox-image-api.greffe-b.workers.dev`)
+- **Image Generation**: Cloudflare Worker with FLUX-1 Schnell model (`colorbox-image-api.greffe-b.workers.dev`)
 - **Translation**: MyMemory API (French → English for image prompts)
-- **Prompt Enhancement**: LLM endpoint on Cloudflare Worker (`/enrich`)
+- **Prompt Enhancement**: Llama 3.1 8B on Cloudflare Worker (`/enrich` endpoint)
 - **Storage**: localStorage for history (last 20 drawings)
 - **PWA**: Service Worker + manifest.json for offline capability
 
 ### File Structure
 ```
-/
-├── index.html          # Complete app: HTML + CSS + JS (~1230 lines, single file)
+colorbox/
+├── index.html          # Complete app: HTML + CSS + JS (~1162 lines, single file)
 ├── manifest.json       # PWA configuration
 ├── sw.js              # Service Worker (caches static assets only)
 ├── worker.js          # Cloudflare Worker source (for image generation API)
 ├── icon-192.png       # PWA icon
-├── icon-512.png       # PWA icon
-├── README.md          # User documentation (French)
-├── debug.html         # Debug/testing page
-└── test-image-load.html # Image loading test page
+├── icon-512.png       # PWA icon (high-res)
+├── README.md          # Developer documentation (English)
+├── CLAUDE.md          # This file - Claude Code guide
+└── .gitignore         # Git exclusions
 ```
 
 **Critical**: All application logic lives in `index.html` - there are no separate JS/CSS files. The `worker.js` is deployed separately to Cloudflare Workers.
@@ -90,13 +90,13 @@ The app uses a state machine with 5 distinct UI states:
 
 ### Content Filtering (Kid-Friendly)
 Single-layer approach:
-- **Blocked words**: Hard block on explicit/violent/inappropriate terms (index.html:668-685)
+- **Blocked words**: Hard block on explicit/violent/inappropriate terms (index.html:718-725)
 - Categories: nudity, violence, drugs, weapons, horror
 
 If blocked content detected → show toast "Hmm, essaie un autre dessin ! 🙈" and return to idle.
 
 ### Image Generation
-The image generation pipeline has multiple stages (index.html:740-801):
+The image generation pipeline has multiple stages (index.html:815-876):
 
 1. **Translation**: French prompt → English via MyMemory API (`translateToEnglish()`)
 2. **Enrichment**: LLM enhances the prompt via `/enrich` endpoint (`enrichPrompt()`)
@@ -142,7 +142,7 @@ const negativePrompt = `color, grayscale, gray, gradient, shading, shadow...`;
 3. Falls back to `printImage()` if share unavailable
 4. Print creates temporary window with just the image + auto-print script
 
-**Technical note on `printImage()`**: Uses string concatenation `'<scr' + 'ipt>'` to prevent the HTML parser from interpreting the closing script tag (index.html:1079-1084).
+**Technical note on `printImage()`**: Uses string concatenation `'<scr' + 'ipt>'` to prevent the HTML parser from interpreting the closing script tag (index.html:1184-1189).
 
 **Note**: The share button uses class `export-btn` instead of `share-btn` to avoid being blocked by ad blockers.
 
@@ -159,7 +159,7 @@ const negativePrompt = `color, grayscale, gray, gradient, shading, shadow...`;
 - `manifest.json`
 - Icons or other static assets
 
-**Current version format**: `vX` (currently `v4`)
+**Current version format**: `vX` (currently `v15`)
 
 **Why this is critical**:
 - PWA users (especially on mobile) will continue seeing the old cached version
@@ -169,16 +169,16 @@ const negativePrompt = `color, grayscale, gray, gradient, shading, shadow...`;
 **Example**:
 ```javascript
 // Before making changes
-const CACHE_NAME = 'v4';
+const CACHE_NAME = 'v15';
 
 // After making ANY modification to index.html or other assets
-const CACHE_NAME = 'v5';  // ← ALWAYS increment!
+const CACHE_NAME = 'v16';  // ← ALWAYS increment!
 ```
 
 **Deployment workflow**:
 1. Make your code changes to `index.html` or other files
-2. Increment `CACHE_NAME` in `sw.js` (v4 → v5, v5 → v6, etc.)
-3. Update the `.version-indicator` text in `index.html` to match (e.g., `<div class="version-indicator">v5</div>`)
+2. Increment `CACHE_NAME` in `sw.js` (v15 → v16, v16 → v17, etc.)
+3. Update the `.version-indicator` text in `index.html` to match (e.g., `<div class="version-indicator">v16</div>`)
 4. Commit all changes together
 5. Deploy to production
 
@@ -190,25 +190,25 @@ This ensures mobile users automatically receive the updated version when they ne
 The image generation uses a Cloudflare Worker (`worker.js`). To modify:
 1. Edit `worker.js` to change the model or API
 2. Deploy to Cloudflare Workers
-3. Update `WORKER_URL` in `index.html` (line 688)
+3. Update `WORKER_URL` in `index.html` (line 738)
 
 ### Adjusting Prompt Style
-Edit the prompt templates in `generateImage()` (index.html:745-766):
+Edit the prompt templates in `generateImage()` (index.html:820-841):
 - Modify `coloringPrompt` for different styles
 - Adjust `negativePrompt` to exclude unwanted elements
 - Change `steps` parameter (currently 6) for quality vs speed tradeoff
 
 ### Updating Content Filter
-- Add blocked words to `blockedWords` array (index.html:668-675)
+- Add blocked words to `blockedWords` array (index.html:718-725)
 
 ### Changing History Limit
-Modify the slice limit in `saveToHistory()` (index.html:993-994):
+Modify the slice limit in `saveToHistory()` (index.html:1098-1099):
 ```javascript
 if (state.history.length > 20) {  // Change 20 to desired limit
 ```
 
 ### Modifying History Modal Display
-The modal shows only 6 recent items. Change in `renderHistoryGrid()` (index.html:1103):
+The modal shows only 6 recent items. Change in `renderHistoryGrid()` (index.html:1208):
 ```javascript
 const recentHistory = state.history.slice(0, 6);  // Change 6 to show more/fewer
 ```
@@ -231,7 +231,7 @@ const recentHistory = state.history.slice(0, 6);  // Change 6 to show more/fewer
 - Voice recognition set to `fr-FR`
 - French prompts are automatically translated to English before image generation
 - To change language:
-  1. Update `recognition.lang` (index.html:623)
+  1. Update `recognition.lang` (index.html:655)
   2. Update all UI strings in HTML
   3. Update `blockedWords` for target language
   4. Modify `translateToEnglish()` if not using French as source
