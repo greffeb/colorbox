@@ -759,6 +759,148 @@ Examples:
 "un renard qui fait de la moto et qui porte un pyjama rayé" → "A fox riding a motorcycle wearing striped pajamas"
 "un ours qui jongle avec des cactus devant les pyramides" → "A bear juggling cacti in front of the Egyptian pyramids"`;
 
+        // Variety pools for two-pass enrichment (random fill)
+        const VARIETY_POOLS = {
+            settings: [
+                // Nature & Fantasy (12)
+                "in a magical forest", "on a fluffy cloud", "in an underwater kingdom",
+                "in a secret garden", "on a rainbow", "in a giant mushroom village",
+                "in a fairy tale meadow", "on a floating island", "in an enchanted palace",
+                "in a flower field", "under a giant tree", "in a crystal cavern",
+                // Adventure (10)
+                "on a pirate ship", "in outer space", "in a castle tower",
+                "on a hot air balloon ride", "exploring a cave with crystals",
+                "on a desert island", "in a jungle adventure", "at a carnival",
+                "on a train journey", "in a dinosaur park",
+                // Cozy & Everyday (10)
+                "in a cozy kitchen", "in a treehouse", "at a birthday party",
+                "in a toy shop", "in a cozy library",
+                "in a cozy bedroom", "at a playground", "in a bakery",
+                "at the beach", "in a petting zoo"
+            ],
+            activities: [
+                // Creative (8)
+                "painting a masterpiece", "baking a giant cake", "building a sandcastle",
+                "making music",
+                "creating a collage", "sculpting with clay", "drawing with chalk",
+                "making a puppet show",
+                // Playful (10)
+                "bouncing on a trampoline", "flying a colorful kite", "blowing bubbles",
+                "doing silly magic tricks", "playing hide and seek",
+                "jumping in puddles", "dancing around", "playing dress-up",
+                "having a pillow fight", "swinging on a swing",
+                // Adventure (8)
+                "exploring with a treasure map", "riding a skateboard", "sailing a boat",
+                "catching stars in a net",
+                "climbing a mountain", "going on a safari", "discovering fossils",
+                "riding a roller coaster",
+                // Calm (6)
+                "reading a big storybook", "having a tea party", "stargazing",
+                "picking flowers", "watching clouds", "feeding the ducks"
+            ],
+            companions: [
+                // Creatures (16)
+                "with a tiny mouse friend", "with a cheerful bird",
+                "with a friendly butterfly", "with a curious ladybug",
+                "with a bouncy frog", "with a sleepy snail",
+                "with a wise owl", "with playful fish",
+                "with a cuddly bunny", "with a happy puppy",
+                "with a fluffy kitten", "with a gentle deer",
+                "with a chirping cricket", "with a busy bee",
+                "with a colorful parrot", "with a swimming turtle",
+                // Objects (14)
+                "with floating balloons", "with dancing stars",
+                "with musical notes swirling", "with sparkles and swirls",
+                "with soap bubbles everywhere", "with paper airplanes",
+                "with hearts floating around",
+                "with falling leaves", "with twirling ribbons",
+                "with bouncing balls", "with shooting stars",
+                "with confetti raining down", "with magic wands sparkling",
+                "with kites flying high"
+            ]
+        };
+
+        // Pick random item from array
+        function randomPick(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+
+        // Pass 1: Analyze prompt via /analyze endpoint
+        async function analyzePrompt(frenchPrompt) {
+            const response = await fetch(WORKER_URL.replace(/\/$/, '') + '/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: frenchPrompt })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Analysis failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.analysis;
+        }
+
+        // Fill null values with variety from pools
+        function fillWithVariety(analysis) {
+            const filled = { ...analysis };
+
+            // Count user-specified core categories
+            const coreKeys = ['setting', 'activity', 'clothing', 'objects', 'decor'];
+            const specifiedCount = coreKeys.filter(k => filled[k] !== null).length;
+            const isSimple = specifiedCount <= 1;
+
+            // Simple prompts: fill more aggressively
+            // Detailed prompts: fill less, respect user intent
+
+            if (filled.setting === null && (isSimple || Math.random() > 0.5)) {
+                filled.setting = randomPick(VARIETY_POOLS.settings);
+            }
+
+            if (filled.activity === null && isSimple) {
+                filled.activity = randomPick(VARIETY_POOLS.activities);
+            }
+
+            if (!filled.companion && isSimple && Math.random() > 0.4) {
+                filled.companion = randomPick(VARIETY_POOLS.companions);
+            }
+
+            return filled;
+        }
+
+        // Pass 2: Enrich from filled structure
+        async function enrichFromStructure(structure) {
+            const response = await fetch(WORKER_URL.replace(/\/$/, '') + '/enrich', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ structure: structure })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Enrichment failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.enriched?.trim() || '';
+        }
+
+        // Two-pass enrichment with variety injection
+        async function enrichPromptTwoPass(frenchPrompt) {
+            // Pass 1: Analyze
+            const analysis = await analyzePrompt(frenchPrompt);
+            console.log('Analysis:', analysis);
+
+            // Random fill gaps
+            const filled = fillWithVariety(analysis);
+            console.log('Filled:', filled);
+
+            // Pass 2: Enrich from structure
+            const enriched = await enrichFromStructure(filled);
+            console.log('Two-pass enriched:', enriched);
+
+            return enriched;
+        }
+
         // Translate French to English to avoid NSFW false positives
         async function translateToEnglish(frenchText) {
             try {
@@ -780,35 +922,47 @@ Examples:
             }
         }
 
-        // Enrich prompt using LLM (translates + adds kid-friendly context)
+        // Single-pass enrichment (fallback)
+        async function enrichPromptSinglePass(userPrompt) {
+            const response = await fetch(WORKER_URL.replace(/\/$/, '') + '/enrich', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: userPrompt,
+                    systemPrompt: ENRICHMENT_SYSTEM_PROMPT
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Enrichment failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const enriched = data.enriched?.trim();
+
+            if (enriched) {
+                console.log(`Single-pass enriched: "${userPrompt}" → "${enriched}"`);
+                return enriched;
+            }
+
+            throw new Error('Empty enrichment response');
+        }
+
+        // Enrich prompt using LLM (two-pass with variety, fallback to single-pass)
         async function enrichPrompt(userPrompt) {
             try {
-                const response = await fetch(WORKER_URL.replace(/\/$/, '') + '/enrich', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: userPrompt,
-                        systemPrompt: ENRICHMENT_SYSTEM_PROMPT
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Enrichment failed: ${response.status}`);
-                }
-
-                const data = await response.json();
-                const enriched = data.enriched?.trim();
-
-                if (enriched) {
-                    console.log(`Enriched: "${userPrompt}" → "${enriched}"`);
-                    return enriched;
-                }
-
-                // Fallback to translation only
-                return await translateToEnglish(userPrompt);
+                // Try two-pass enrichment first (with variety injection)
+                return await enrichPromptTwoPass(userPrompt);
             } catch (error) {
-                console.warn('Enrichment failed, falling back to translation:', error);
-                return await translateToEnglish(userPrompt);
+                console.warn('Two-pass enrichment failed, trying single-pass:', error);
+                try {
+                    // Fallback to single-pass enrichment
+                    return await enrichPromptSinglePass(userPrompt);
+                } catch (error2) {
+                    console.warn('Single-pass enrichment failed, falling back to translation:', error2);
+                    // Last resort: just translate
+                    return await translateToEnglish(userPrompt);
+                }
             }
         }
 
