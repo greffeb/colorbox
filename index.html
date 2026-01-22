@@ -25,12 +25,17 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #DC4D01;
             min-height: 100vh;
+            min-height: -webkit-fill-available;
             display: flex;
             flex-direction: column;
             overflow: hidden;
             position: fixed;
             width: 100%;
             height: 100%;
+        }
+
+        html {
+            height: -webkit-fill-available;
         }
 
         .display-area {
@@ -237,7 +242,8 @@
         }
 
         .push-button-container {
-            padding: 16px 24px 32px 24px;
+            padding: 16px 24px calc(32px + env(safe-area-inset-bottom, 0px)) 24px;
+            padding-bottom: max(48px, calc(32px + env(safe-area-inset-bottom, 16px)));
             display: flex;
             align-items: center;
             justify-content: center;
@@ -526,7 +532,7 @@
         </style>
 </head>
 <body>
-    <div class="version-indicator">v9</div>
+    <div class="version-indicator">v10</div>
     <main class="display-area">
         <div class="polaroid">
             <div class="polaroid-frame">
