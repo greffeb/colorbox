@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ColorBox Prompt Tester</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        h1 { color: #ff6b6b; margin-bottom: 20px; }
+        h2 { color: #4ecdc4; margin: 15px 0 10px; font-size: 1em; }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .left-panel, .right-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .prompt-section {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        textarea {
+            width: 100%;
+            background: #0f0f23;
+            border: 1px solid #333;
+            border-radius: 4px;
+            color: #eee;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            padding: 10px;
+            resize: vertical;
+        }
+
+        .enricher-prompt { height: 280px; }
+        .flux-prompt { height: 200px; }
+        .negative-prompt { height: 80px; }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            background: #16213e;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        #userPrompt {
+            flex: 1;
+            padding: 12px;
+            font-size: 16px;
+            border-radius: 4px;
+            border: 2px solid #4ecdc4;
+            background: #0f0f23;
+            color: #eee;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        #generateBtn {
+            background: #ff6b6b;
+            color: white;
+        }
+        #generateBtn:hover { background: #ee5a5a; }
+        #generateBtn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        #enrichOnlyBtn {
+            background: #4ecdc4;
+            color: #1a1a2e;
+        }
+        #enrichOnlyBtn:hover { background: #3dbdb5; }
+
+        .results {
+            background: #16213e;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 400px;
+        }
+
+        .result-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #0f0f23;
+            border-radius: 4px;
+            border-left: 3px solid #4ecdc4;
+        }
+
+        .result-item label {
+            display: block;
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .result-item pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 13px;
+            color: #fff;
+        }
+
+        #generatedImage {
+            max-width: 100%;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .image-container {
+            text-align: center;
+            padding: 20px;
+            background: #0f0f23;
+            border-radius: 4px;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .status.loading { background: #f39c12; color: #1a1a2e; }
+        .status.success { background: #27ae60; }
+        .status.error { background: #e74c3c; }
+
+        .hidden { display: none; }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>ColorBox Prompt Tester</h1>
+
+    <div class="container">
+        <div class="left-panel">
+            <div class="prompt-section">
+                <h2>Enricher System Prompt (Llama 3.1 8B)</h2>
+                <textarea id="enricherPrompt" class="enricher-prompt">You enrich simple ideas into children's coloring book scenes.
+
+IMPORTANT: If the prompt is already detailed (has background, clothes, pose, or activity), KEEP their details! Only translate to English. Do NOT replace their scene with generic elements.
+
+For SIMPLE prompts (just a subject like "un chat"):
+- Add a cute interpretation, simple action, and playful environment
+
+For DETAILED prompts (already has context):
+- Just translate to English and keep ALL their specific details
+
+CRITICAL RULES:
+- NEVER mention colors (no "red", "blue", "grey", "bright", etc.)
+- NEVER describe textures (no "fluffy", "soft", "shiny")
+- Keep it to 1 sentence maximum
+- Respond in English only
+
+Examples:
+"un chat" → "A cute cat sitting in a garden with butterflies and flowers"
+"un renard qui fait de la moto et qui porte un pyjama rayé" → "A fox riding a motorcycle wearing striped pajamas"
+"un ours qui jongle avec des cactus devant les pyramides" → "A bear juggling cacti in front of the Egyptian pyramids"</textarea>
+            </div>
+
+            <div class="prompt-section">
+                <h2>FLUX Coloring Prompt Template</h2>
+                <p style="font-size: 11px; color: #888; margin: 0 0 10px;">Use {{enrichedPrompt}} as placeholder</p>
+                <textarea id="fluxPrompt" class="flux-prompt">Children's coloring book illustration in a cute kawaii-inspired cartoon style:
+{{enrichedPrompt}}
+
+Style: Whimsical, cheerful, appealing to children aged 3-8.
+Composition: Subject fills 60-70% of frame, with supporting background elements around edges.
+Character design: Round friendly shapes, large expressive eyes, simple cute proportions.
+
+Technical requirements:
+- Clean bold black outlines only on pure white background
+- Thick outer contours (3-4px), medium inner details (1-2px)
+- No color, no grayscale, no gradients, no shading, no fills, no textures
+- Smooth vector-style line art with crisp edges
+- Clear enclosed shapes suitable for coloring
+- High contrast, print-ready quality</textarea>
+            </div>
+
+            <div class="prompt-section">
+                <h2>Negative Prompt</h2>
+                <textarea id="negativePrompt" class="negative-prompt">color, grayscale, gray, gradient, texture,
+photorealistic, realistic, dark, horror, scary, abstract,
+messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="input-row">
+                <input type="text" id="userPrompt" placeholder="Enter prompt (e.g., un chat astronaute)..." />
+                <button id="enrichOnlyBtn">Enrich Only</button>
+                <button id="generateBtn">Generate</button>
+            </div>
+
+            <div class="results">
+                <h2>Results</h2>
+                <div id="status" class="status hidden"></div>
+
+                <div id="originalResult" class="result-item hidden">
+                    <label>Original Prompt</label>
+                    <pre id="originalText"></pre>
+                </div>
+
+                <div id="enrichedResult" class="result-item hidden">
+                    <label>Enriched Prompt (LLM Output)</label>
+                    <pre id="enrichedText"></pre>
+                </div>
+
+                <div id="finalResult" class="result-item hidden">
+                    <label>Final FLUX Prompt</label>
+                    <pre id="finalText"></pre>
+                </div>
+
+                <div id="imageResult" class="image-container hidden">
+                    <img id="generatedImage" alt="Generated coloring page" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WORKER_URL = 'https://colorbox-image-api.greffe-b.workers.dev/';
+
+        // DOM elements
+        const userPromptInput = document.getElementById('userPrompt');
+        const enricherPromptTextarea = document.getElementById('enricherPrompt');
+        const fluxPromptTextarea = document.getElementById('fluxPrompt');
+        const negativePromptTextarea = document.getElementById('negativePrompt');
+        const generateBtn = document.getElementById('generateBtn');
+        const enrichOnlyBtn = document.getElementById('enrichOnlyBtn');
+
+        const statusDiv = document.getElementById('status');
+        const originalResult = document.getElementById('originalResult');
+        const enrichedResult = document.getElementById('enrichedResult');
+        const finalResult = document.getElementById('finalResult');
+        const imageResult = document.getElementById('imageResult');
+
+        const originalText = document.getElementById('originalText');
+        const enrichedText = document.getElementById('enrichedText');
+        const finalText = document.getElementById('finalText');
+        const generatedImage = document.getElementById('generatedImage');
+
+        function setStatus(message, type) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            statusDiv.classList.add('hidden');
+        }
+
+        function showResult(element, text, textElement) {
+            if (textElement) textElement.textContent = text;
+            element.classList.remove('hidden');
+        }
+
+        function hideAllResults() {
+            originalResult.classList.add('hidden');
+            enrichedResult.classList.add('hidden');
+            finalResult.classList.add('hidden');
+            imageResult.classList.add('hidden');
+        }
+
+        async function enrichPrompt(userPrompt, systemPrompt) {
+            const response = await fetch(WORKER_URL.replace(/\/$/, '') + '/enrich', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: userPrompt,
+                    systemPrompt: systemPrompt
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Enrichment failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.enriched?.trim() || userPrompt;
+        }
+
+        async function generateImage(prompt, negativePrompt) {
+            const response = await fetch(WORKER_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: prompt,
+                    negative_prompt: negativePrompt,
+                    steps: 6
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                throw new Error(`Image generation failed: ${response.status} - ${JSON.stringify(errorData)}`);
+            }
+
+            const blob = await response.blob();
+            return URL.createObjectURL(blob);
+        }
+
+        async function runEnrichOnly() {
+            const userPrompt = userPromptInput.value.trim();
+            if (!userPrompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+
+            hideAllResults();
+            enrichOnlyBtn.disabled = true;
+            generateBtn.disabled = true;
+
+            try {
+                setStatus('Enriching prompt...', 'loading');
+                showResult(originalResult, userPrompt, originalText);
+
+                const enriched = await enrichPrompt(userPrompt, enricherPromptTextarea.value);
+                showResult(enrichedResult, enriched, enrichedText);
+
+                const finalPrompt = fluxPromptTextarea.value.replace('{{enrichedPrompt}}', enriched);
+                showResult(finalResult, finalPrompt, finalText);
+
+                setStatus('Enrichment complete!', 'success');
+            } catch (error) {
+                setStatus(`Error: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                enrichOnlyBtn.disabled = false;
+                generateBtn.disabled = false;
+            }
+        }
+
+        async function runGenerate() {
+            const userPrompt = userPromptInput.value.trim();
+            if (!userPrompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+
+            hideAllResults();
+            enrichOnlyBtn.disabled = true;
+            generateBtn.disabled = true;
+
+            try {
+                // Step 1: Enrich
+                setStatus('Step 1/2: Enriching prompt...', 'loading');
+                showResult(originalResult, userPrompt, originalText);
+
+                const enriched = await enrichPrompt(userPrompt, enricherPromptTextarea.value);
+                showResult(enrichedResult, enriched, enrichedText);
+
+                // Step 2: Build final prompt
+                const finalPrompt = fluxPromptTextarea.value.replace('{{enrichedPrompt}}', enriched);
+                showResult(finalResult, finalPrompt, finalText);
+
+                // Step 3: Generate image
+                setStatus('Step 2/2: Generating image...', 'loading');
+                const imageUrl = await generateImage(finalPrompt, negativePromptTextarea.value);
+
+                generatedImage.src = imageUrl;
+                imageResult.classList.remove('hidden');
+
+                setStatus('Generation complete!', 'success');
+            } catch (error) {
+                setStatus(`Error: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                enrichOnlyBtn.disabled = false;
+                generateBtn.disabled = false;
+            }
+        }
+
+        // Event listeners
+        enrichOnlyBtn.addEventListener('click', runEnrichOnly);
+        generateBtn.addEventListener('click', runGenerate);
+
+        userPromptInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                if (e.shiftKey) {
+                    runEnrichOnly();
+                } else {
+                    runGenerate();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
