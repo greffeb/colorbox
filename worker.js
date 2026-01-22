@@ -244,15 +244,19 @@ Examples:
 
 // Image generation using FLUX
 async function handleImageGeneration(request, env) {
-  const { prompt, steps } = await request.json();
+  const { prompt, negative_prompt, steps } = await request.json();
 
   console.log('Generating image for prompt:', prompt);
+  if (negative_prompt) {
+    console.log('Using negative prompt:', negative_prompt);
+  }
 
-  // Flux 1 Schnell with configurable steps
+  // Flux 1 Schnell with configurable steps and negative prompt
   const aiResponse = await env.AI.run(
     '@cf/black-forest-labs/flux-1-schnell',
     {
       prompt: prompt,
+      negative_prompt: negative_prompt,
       num_steps: steps || 6
     }
   );

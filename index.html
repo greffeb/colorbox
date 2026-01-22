@@ -972,26 +972,38 @@ Examples:
 
             // Enhanced FLUX-1 coloring book prompt
             const coloringPrompt = `
-            Children's coloring book illustration in a cute kawaii-inspired cartoon style:
+            BLACK AND WHITE ONLY - Children's coloring book page (uncolored, empty, ready to color):
             ${enrichedPrompt}
-            
+
             Style: Whimsical, cheerful, appealing to children aged 3-8.
             Composition: Subject fills 60-70% of frame, with supporting background elements around edges.
             Character design: Round friendly shapes, large expressive eyes, simple cute proportions.
-            
-            Technical requirements:
-            - Clean bold black outlines only on pure white background
+
+            CRITICAL - Technical requirements (MUST FOLLOW):
+            - ONLY black lines on pure white background - absolutely NO color anywhere
+            - This is an EMPTY coloring page - UNCOLORED, UNFILLED
             - Thick outer contours (3-4px), medium inner details (1-2px)
-            - No color, no grayscale, no gradients, no shading, no fills, no textures
+            - Pure black and white line art ONLY - no grayscale, no gradients, no shading
+            - No fills, no textures, no gray tones of any kind
             - Smooth vector-style line art with crisp edges
             - Clear enclosed shapes suitable for coloring
             - High contrast, print-ready quality
+            - Line drawing style, outline drawing, contour drawing
             `.trim();
 
             const negativePrompt = `
-        color, grayscale, gray, gradient, texture,
-        photorealistic, realistic, dark, horror, scary, abstract,
-        messy lines, sketchy lines, thin outlines, watermark, text, logo
+        color, colors, colored, coloured, coloring, colouring, colorful, colourful,
+        painting, painted, watercolor, watercolour, ink, marker, crayon, pencil,
+        red, blue, green, yellow, orange, purple, pink, brown, black, white, grey, gray,
+        cyan, magenta, turquoise, violet, indigo, beige, tan, navy, teal, lime,
+        grayscale, greyscale, shading, shaded, shadows, shadow, gradient, gradients,
+        filled, filled in, colored in, rendered, rendering, 3d, photorealistic, realistic,
+        texture, textured, textures, materials, fabric, fur, hair, skin tone,
+        tone, tones, tinted, hue, saturation, brightness, lighting, light, dark,
+        soft, smooth, rough, glossy, matte, metallic, shiny, glowing, glow,
+        background color, colored background, detailed shading, crosshatch, hatching,
+        artistic, painted style, digital painting, illustration style, cartoon color,
+        messy, sketchy, rough, watermark, text, logo, signature
         `.trim();
 
             console.log('Generating image via Cloudflare Worker:', coloringPrompt);
@@ -1005,7 +1017,7 @@ Examples:
                     body: JSON.stringify({
                         prompt: coloringPrompt,
                         negative_prompt: negativePrompt,
-                        steps: 6
+                        steps: 10
                     })
                 });
 

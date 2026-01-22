@@ -49,9 +49,9 @@
             resize: vertical;
         }
 
-        .enricher-prompt { height: 280px; }
-        .flux-prompt { height: 200px; }
-        .negative-prompt { height: 80px; }
+        .enricher-prompt { height: 200px; }
+        .flux-prompt { height: 160px; }
+        .negative-prompt { height: 60px; }
 
         .input-row {
             display: flex;
@@ -59,10 +59,12 @@
             background: #16213e;
             padding: 15px;
             border-radius: 8px;
+            flex-wrap: wrap;
         }
 
         #userPrompt {
             flex: 1;
+            min-width: 200px;
             padding: 12px;
             font-size: 16px;
             border-radius: 4px;
@@ -73,7 +75,7 @@
 
         button {
             padding: 12px 24px;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             border: none;
             border-radius: 4px;
@@ -86,7 +88,7 @@
             color: white;
         }
         #generateBtn:hover { background: #ee5a5a; }
-        #generateBtn:disabled {
+        #generateBtn:disabled, #enrichOnlyBtn:disabled, #analyzeOnlyBtn:disabled {
             background: #666;
             cursor: not-allowed;
         }
@@ -96,6 +98,12 @@
             color: #1a1a2e;
         }
         #enrichOnlyBtn:hover { background: #3dbdb5; }
+
+        #analyzeOnlyBtn {
+            background: #9b59b6;
+            color: white;
+        }
+        #analyzeOnlyBtn:hover { background: #8e44ad; }
 
         .results {
             background: #16213e;
@@ -111,6 +119,9 @@
             border-radius: 4px;
             border-left: 3px solid #4ecdc4;
         }
+
+        .result-item.analysis { border-left-color: #9b59b6; }
+        .result-item.filled { border-left-color: #f39c12; }
 
         .result-item label {
             display: block;
@@ -152,6 +163,41 @@
 
         .hidden { display: none; }
 
+        /* Mode toggle */
+        .mode-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: #16213e;
+            padding: 10px 15px;
+            border-radius: 8px;
+            align-items: center;
+        }
+        .mode-toggle label {
+            font-size: 14px;
+            cursor: pointer;
+            padding: 8px 16px;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        .mode-toggle input[type="radio"] { display: none; }
+        .mode-toggle input[type="radio"]:checked + label {
+            background: #4ecdc4;
+            color: #1a1a2e;
+        }
+        .mode-toggle input[type="radio"]:not(:checked) + label {
+            background: #0f0f23;
+            color: #888;
+        }
+        .mode-toggle input[type="radio"]:not(:checked) + label:hover {
+            background: #1a1a3e;
+            color: #eee;
+        }
+
+        .two-pass-only { display: none; }
+        body.two-pass-mode .two-pass-only { display: block; }
+        body.two-pass-mode .single-pass-only { display: none; }
+
         @media (max-width: 900px) {
             .container {
                 grid-template-columns: 1fr;
@@ -162,30 +208,61 @@
 <body>
     <h1>ColorBox Prompt Tester</h1>
 
+    <div class="mode-toggle">
+        <span style="margin-right: 10px;">Mode:</span>
+        <input type="radio" name="mode" id="singlePassMode" value="single" checked>
+        <label for="singlePassMode">Single-Pass</label>
+        <input type="radio" name="mode" id="twoPassMode" value="two">
+        <label for="twoPassMode">Two-Pass (with Variety)</label>
+    </div>
+
     <div class="container">
         <div class="left-panel">
-            <div class="prompt-section">
+            <!-- Single-pass enricher prompt -->
+            <div class="prompt-section single-pass-only">
                 <h2>Enricher System Prompt (Llama 3.1 8B)</h2>
-                <textarea id="enricherPrompt" class="enricher-prompt">You enrich simple ideas into children's coloring book scenes.
+                <textarea id="enricherPrompt" class="enricher-prompt">You enrich simple ideas into lively children's coloring book scenes.
 
-IMPORTANT: If the prompt is already detailed (has background, clothes, pose, or activity), KEEP their details! Only translate to English. Do NOT replace their scene with generic elements.
+RULES:
+- Output 1 sentence only, in English
+- NEVER mention colors, textures, or materials (no "red", "fluffy", "shiny")
+- Always include: a clear emotion/expression + an action/pose + environmental details
 
-For SIMPLE prompts (just a subject like "un chat"):
-- Add a cute interpretation, simple action, and playful environment
+For SIMPLE prompts (just a subject):
+- Add a cute expression (smiling, surprised, excited)
+- Give them a fun activity or dynamic pose
+- Add 2-3 small background elements kids love to color (stars, flowers, clouds, small creatures)
 
 For DETAILED prompts (already has context):
-- Just translate to English and keep ALL their specific details
-
-CRITICAL RULES:
-- NEVER mention colors (no "red", "blue", "grey", "bright", etc.)
-- NEVER describe textures (no "fluffy", "soft", "shiny")
-- Keep it to 1 sentence maximum
-- Respond in English only
+- Translate to English
+- Keep ALL their specifics
+- Only add expression and 1-2 small background details if missing
 
 Examples:
-"un chat" → "A cute cat sitting in a garden with butterflies and flowers"
-"un renard qui fait de la moto et qui porte un pyjama rayé" → "A fox riding a motorcycle wearing striped pajamas"
-"un ours qui jongle avec des cactus devant les pyramides" → "A bear juggling cacti in front of the Egyptian pyramids"</textarea>
+"un chat" → "A cheerful cat with big curious eyes chasing a butterfly through a garden with flowers, mushrooms, and a tiny snail"
+"un ours à vélo" → "A happy bear pedaling a bicycle with a basket, surrounded by floating balloons and small birds, with hills and trees in the background"
+"un renard qui fait de la moto et qui porte un pyjama rayé" → "An excited fox in striped pajamas doing a wheelie on a motorcycle, with dust clouds and stars trailing behind"
+</textarea>
+            </div>
+
+            <!-- Two-pass: Analysis info (read-only) -->
+            <div class="prompt-section two-pass-only">
+                <h2>Two-Pass Flow</h2>
+                <p style="font-size: 12px; color: #aaa; margin: 0;">
+                    <strong>Pass 1 (Analyze):</strong> Extract elements from French prompt into JSON<br>
+                    <strong>Random Fill:</strong> Fill null values from variety pools<br>
+                    <strong>Pass 2 (Enrich):</strong> Create English sentence from filled JSON
+                </p>
+            </div>
+
+            <!-- Two-pass: Variety pools display -->
+            <div class="prompt-section two-pass-only">
+                <h2>Variety Pools (for Random Fill)</h2>
+                <pre style="font-size: 11px; color: #888; margin: 0; max-height: 200px; overflow-y: auto;">Settings (16): magical forest, fluffy cloud, underwater kingdom, secret garden, rainbow, mushroom village, pirate ship, outer space, castle tower, hot air balloon, crystal cave, cozy kitchen, treehouse, birthday party, toy shop, cozy library
+
+Activities (16): painting, baking cake, building sandcastle, making music, bouncing on trampoline, flying kite, blowing bubbles, magic tricks, hide and seek, treasure map, skateboarding, sailing, catching stars, reading, tea party, stargazing
+
+Companions (15): mouse friend, cheerful bird, butterfly, ladybug, bouncy frog, sleepy snail, wise owl, playful fish, floating balloons, dancing stars, musical notes, sparkles, soap bubbles, paper airplanes, floating hearts</pre>
             </div>
 
             <div class="prompt-section">
@@ -218,6 +295,7 @@ messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
         <div class="right-panel">
             <div class="input-row">
                 <input type="text" id="userPrompt" placeholder="Enter prompt (e.g., un chat astronaute)..." />
+                <button id="analyzeOnlyBtn" class="two-pass-only">Analyze</button>
                 <button id="enrichOnlyBtn">Enrich Only</button>
                 <button id="generateBtn">Generate</button>
             </div>
@@ -229,6 +307,17 @@ messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
                 <div id="originalResult" class="result-item hidden">
                     <label>Original Prompt</label>
                     <pre id="originalText"></pre>
+                </div>
+
+                <!-- Two-pass results -->
+                <div id="analysisResult" class="result-item analysis hidden">
+                    <label>Pass 1: Analysis (LLM extracted JSON)</label>
+                    <pre id="analysisText"></pre>
+                </div>
+
+                <div id="filledResult" class="result-item filled hidden">
+                    <label>Random Fill (gaps filled from variety pools)</label>
+                    <pre id="filledText"></pre>
                 </div>
 
                 <div id="enrichedResult" class="result-item hidden">
@@ -251,6 +340,46 @@ messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
     <script>
         const WORKER_URL = 'https://colorbox-image-api.greffe-b.workers.dev/';
 
+        // Variety pools for random fill
+        const VARIETY_POOLS = {
+            settings: [
+                // Nature & Fantasy (6)
+                "in a magical forest", "on a fluffy cloud", "in an underwater kingdom",
+                "in a secret garden", "on a rainbow", "in a giant mushroom village",
+                // Adventure (5)
+                "on a pirate ship", "in outer space", "in a castle tower",
+                "on a hot air balloon ride", "exploring a cave with crystals",
+                // Cozy & Everyday (5)
+                "in a cozy kitchen", "in a treehouse", "at a birthday party",
+                "in a toy shop", "in a cozy library"
+            ],
+            activities: [
+                // Creative (4)
+                "painting a masterpiece", "baking a giant cake", "building a sandcastle",
+                "making music",
+                // Playful (5)
+                "bouncing on a trampoline", "flying a colorful kite", "blowing bubbles",
+                "doing silly magic tricks", "playing hide and seek",
+                // Adventure (4)
+                "exploring with a treasure map", "riding a skateboard", "sailing a boat",
+                "catching stars in a net",
+                // Calm (3)
+                "reading a big storybook", "having a tea party", "stargazing"
+            ],
+            companions: [
+                // Creatures (8)
+                "with a tiny mouse friend", "with a cheerful bird",
+                "with a friendly butterfly", "with a curious ladybug",
+                "with a bouncy frog", "with a sleepy snail",
+                "with a wise owl", "with playful fish",
+                // Objects (7)
+                "with floating balloons", "with dancing stars",
+                "with musical notes swirling", "with sparkles and swirls",
+                "with soap bubbles everywhere", "with paper airplanes",
+                "with hearts floating around"
+            ]
+        };
+
         // DOM elements
         const userPromptInput = document.getElementById('userPrompt');
         const enricherPromptTextarea = document.getElementById('enricherPrompt');
@@ -258,17 +387,37 @@ messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
         const negativePromptTextarea = document.getElementById('negativePrompt');
         const generateBtn = document.getElementById('generateBtn');
         const enrichOnlyBtn = document.getElementById('enrichOnlyBtn');
+        const analyzeOnlyBtn = document.getElementById('analyzeOnlyBtn');
 
         const statusDiv = document.getElementById('status');
         const originalResult = document.getElementById('originalResult');
+        const analysisResult = document.getElementById('analysisResult');
+        const filledResult = document.getElementById('filledResult');
         const enrichedResult = document.getElementById('enrichedResult');
         const finalResult = document.getElementById('finalResult');
         const imageResult = document.getElementById('imageResult');
 
         const originalText = document.getElementById('originalText');
+        const analysisText = document.getElementById('analysisText');
+        const filledText = document.getElementById('filledText');
         const enrichedText = document.getElementById('enrichedText');
         const finalText = document.getElementById('finalText');
         const generatedImage = document.getElementById('generatedImage');
+
+        // Mode toggle
+        const singlePassMode = document.getElementById('singlePassMode');
+        const twoPassMode = document.getElementById('twoPassMode');
+
+        function isTwoPassMode() {
+            return twoPassMode.checked;
+        }
+
+        singlePassMode.addEventListener('change', () => {
+            document.body.classList.remove('two-pass-mode');
+        });
+        twoPassMode.addEventListener('change', () => {
+            document.body.classList.add('two-pass-mode');
+        });
 
         function setStatus(message, type) {
             statusDiv.textContent = message;
@@ -287,11 +436,77 @@ messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
 
         function hideAllResults() {
             originalResult.classList.add('hidden');
+            analysisResult.classList.add('hidden');
+            filledResult.classList.add('hidden');
             enrichedResult.classList.add('hidden');
             finalResult.classList.add('hidden');
             imageResult.classList.add('hidden');
         }
 
+        function randomPick(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+
+        // Pass 1: Analyze prompt
+        async function analyzePrompt(userPrompt) {
+            const response = await fetch(WORKER_URL.replace(/\/$/, '') + '/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: userPrompt })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Analysis failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.analysis;
+        }
+
+        // Fill null values with variety
+        function fillWithVariety(analysis) {
+            const filled = { ...analysis };
+
+            // Count user-specified core categories
+            const coreKeys = ['setting', 'activity', 'clothing', 'objects', 'decor'];
+            const specifiedCount = coreKeys.filter(k => filled[k] !== null).length;
+            const isSimple = specifiedCount <= 1;
+
+            // Simple prompts: fill more aggressively
+            // Detailed prompts: fill less, respect user intent
+
+            if (filled.setting === null && (isSimple || Math.random() > 0.5)) {
+                filled.setting = randomPick(VARIETY_POOLS.settings);
+            }
+
+            if (filled.activity === null && isSimple) {
+                filled.activity = randomPick(VARIETY_POOLS.activities);
+            }
+
+            if (!filled.companion && isSimple && Math.random() > 0.4) {
+                filled.companion = randomPick(VARIETY_POOLS.companions);
+            }
+
+            return filled;
+        }
+
+        // Pass 2: Enrich from structure
+        async function enrichFromStructure(structure) {
+            const response = await fetch(WORKER_URL.replace(/\/$/, '') + '/enrich', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ structure: structure })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Enrichment failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.enriched?.trim() || '';
+        }
+
+        // Single-pass enrich
         async function enrichPrompt(userPrompt, systemPrompt) {
             const response = await fetch(WORKER_URL.replace(/\/$/, '') + '/enrich', {
                 method: 'POST',
@@ -330,6 +545,37 @@ messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
             return URL.createObjectURL(blob);
         }
 
+        // Analyze only (two-pass)
+        async function runAnalyzeOnly() {
+            const userPrompt = userPromptInput.value.trim();
+            if (!userPrompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+
+            hideAllResults();
+            setButtons(true);
+
+            try {
+                setStatus('Analyzing prompt...', 'loading');
+                showResult(originalResult, userPrompt, originalText);
+
+                const analysis = await analyzePrompt(userPrompt);
+                showResult(analysisResult, JSON.stringify(analysis, null, 2), analysisText);
+
+                const filled = fillWithVariety(analysis);
+                showResult(filledResult, JSON.stringify(filled, null, 2), filledText);
+
+                setStatus('Analysis complete!', 'success');
+            } catch (error) {
+                setStatus(`Error: ${error.message}`, 'error');
+                console.error(error);
+            } finally {
+                setButtons(false);
+            }
+        }
+
+        // Enrich only
         async function runEnrichOnly() {
             const userPrompt = userPromptInput.value.trim();
             if (!userPrompt) {
@@ -338,17 +584,31 @@ messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
             }
 
             hideAllResults();
-            enrichOnlyBtn.disabled = true;
-            generateBtn.disabled = true;
+            setButtons(true);
 
             try {
-                setStatus('Enriching prompt...', 'loading');
                 showResult(originalResult, userPrompt, originalText);
 
-                const enriched = await enrichPrompt(userPrompt, enricherPromptTextarea.value);
-                showResult(enrichedResult, enriched, enrichedText);
+                if (isTwoPassMode()) {
+                    // Two-pass enrichment
+                    setStatus('Step 1/2: Analyzing prompt...', 'loading');
+                    const analysis = await analyzePrompt(userPrompt);
+                    showResult(analysisResult, JSON.stringify(analysis, null, 2), analysisText);
 
-                const finalPrompt = fluxPromptTextarea.value.replace('{{enrichedPrompt}}', enriched);
+                    const filled = fillWithVariety(analysis);
+                    showResult(filledResult, JSON.stringify(filled, null, 2), filledText);
+
+                    setStatus('Step 2/2: Creating description...', 'loading');
+                    const enriched = await enrichFromStructure(filled);
+                    showResult(enrichedResult, enriched, enrichedText);
+                } else {
+                    // Single-pass enrichment
+                    setStatus('Enriching prompt...', 'loading');
+                    const enriched = await enrichPrompt(userPrompt, enricherPromptTextarea.value);
+                    showResult(enrichedResult, enriched, enrichedText);
+                }
+
+                const finalPrompt = fluxPromptTextarea.value.replace('{{enrichedPrompt}}', enrichedText.textContent);
                 showResult(finalResult, finalPrompt, finalText);
 
                 setStatus('Enrichment complete!', 'success');
@@ -356,11 +616,11 @@ messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
                 setStatus(`Error: ${error.message}`, 'error');
                 console.error(error);
             } finally {
-                enrichOnlyBtn.disabled = false;
-                generateBtn.disabled = false;
+                setButtons(false);
             }
         }
 
+        // Full generation
         async function runGenerate() {
             const userPrompt = userPromptInput.value.trim();
             if (!userPrompt) {
@@ -369,23 +629,37 @@ messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
             }
 
             hideAllResults();
-            enrichOnlyBtn.disabled = true;
-            generateBtn.disabled = true;
+            setButtons(true);
 
             try {
-                // Step 1: Enrich
-                setStatus('Step 1/2: Enriching prompt...', 'loading');
                 showResult(originalResult, userPrompt, originalText);
 
-                const enriched = await enrichPrompt(userPrompt, enricherPromptTextarea.value);
-                showResult(enrichedResult, enriched, enrichedText);
+                let enriched;
+                if (isTwoPassMode()) {
+                    // Two-pass enrichment
+                    setStatus('Step 1/3: Analyzing prompt...', 'loading');
+                    const analysis = await analyzePrompt(userPrompt);
+                    showResult(analysisResult, JSON.stringify(analysis, null, 2), analysisText);
 
-                // Step 2: Build final prompt
+                    const filled = fillWithVariety(analysis);
+                    showResult(filledResult, JSON.stringify(filled, null, 2), filledText);
+
+                    setStatus('Step 2/3: Creating description...', 'loading');
+                    enriched = await enrichFromStructure(filled);
+                    showResult(enrichedResult, enriched, enrichedText);
+                } else {
+                    // Single-pass enrichment
+                    setStatus('Step 1/2: Enriching prompt...', 'loading');
+                    enriched = await enrichPrompt(userPrompt, enricherPromptTextarea.value);
+                    showResult(enrichedResult, enriched, enrichedText);
+                }
+
+                // Build final prompt
                 const finalPrompt = fluxPromptTextarea.value.replace('{{enrichedPrompt}}', enriched);
                 showResult(finalResult, finalPrompt, finalText);
 
-                // Step 3: Generate image
-                setStatus('Step 2/2: Generating image...', 'loading');
+                // Generate image
+                setStatus(isTwoPassMode() ? 'Step 3/3: Generating image...' : 'Step 2/2: Generating image...', 'loading');
                 const imageUrl = await generateImage(finalPrompt, negativePromptTextarea.value);
 
                 generatedImage.src = imageUrl;
@@ -396,12 +670,18 @@ messy lines, sketchy lines, thin outlines, watermark, text, logo</textarea>
                 setStatus(`Error: ${error.message}`, 'error');
                 console.error(error);
             } finally {
-                enrichOnlyBtn.disabled = false;
-                generateBtn.disabled = false;
+                setButtons(false);
             }
         }
 
+        function setButtons(disabled) {
+            generateBtn.disabled = disabled;
+            enrichOnlyBtn.disabled = disabled;
+            analyzeOnlyBtn.disabled = disabled;
+        }
+
         // Event listeners
+        analyzeOnlyBtn.addEventListener('click', runAnalyzeOnly);
         enrichOnlyBtn.addEventListener('click', runEnrichOnly);
         generateBtn.addEventListener('click', runGenerate);
 
