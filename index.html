@@ -110,7 +110,9 @@
             overflow-wrap: break-word;
             hyphens: auto;
             transition: font-size 0.2s ease;
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .state {
@@ -530,7 +532,7 @@
         </style>
 </head>
 <body>
-    <div class="version-indicator">v13</div>
+    <div class="version-indicator">v14</div>
     <main class="display-area">
         <div class="polaroid">
             <div class="polaroid-frame">
@@ -900,10 +902,10 @@
             elements.polaroidCaption.textContent = displayText;
 
             // Dynamic font sizing - find the largest size that fits
-            // Available space: 72px (polaroid padding-bottom) - 2*8px (caption padding) = 56px for text
-            const maxHeight = 52; // Maximum height for text content (conservative)
-            const minFontSize = 14;
-            const maxFontSize = 40;
+            // Available space: 120px (caption height) - 2*8px (caption padding) = 104px for text
+            const maxHeight = 104; // Maximum height for text content
+            const minFontSize = 16;
+            const maxFontSize = 50;
 
             // Create temporary element to measure text height accurately
             const measureElement = document.createElement('div');
@@ -923,7 +925,7 @@
             measureElement.textContent = displayText;
             document.body.appendChild(measureElement);
 
-            // Binary search for optimal font size
+            // Search for optimal font size (descending from max to min)
             let bestFontSize = minFontSize;
 
             for (let size = maxFontSize; size >= minFontSize; size -= 2) {
