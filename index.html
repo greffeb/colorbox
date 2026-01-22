@@ -103,17 +103,14 @@
             font-weight: 500;
             color: #2d2d2d;
             text-align: center;
-            padding: 6px 10px;
-            height: 66px;
-            line-height: 1.2;
+            padding: 8px 12px;
+            min-height: 68px;
+            line-height: 1.3;
             word-wrap: break-word;
             overflow-wrap: break-word;
             hyphens: auto;
             transition: font-size 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
+            display: block;
         }
 
         .state {
@@ -533,7 +530,7 @@
         </style>
 </head>
 <body>
-    <div class="version-indicator">v11</div>
+    <div class="version-indicator">v12</div>
     <main class="display-area">
         <div class="polaroid">
             <div class="polaroid-frame">
@@ -903,38 +900,45 @@
             elements.polaroidCaption.textContent = displayText;
 
             // Dynamic font sizing - find the largest size that fits
-            const maxHeight = 66; // Available height for caption (matches CSS height)
+            // Available space: 72px (polaroid padding-bottom) - 2*8px (caption padding) = 56px for text
+            const maxHeight = 52; // Maximum height for text content (conservative)
             const minFontSize = 14;
-            const maxFontSize = 42;
+            const maxFontSize = 40;
 
-            // Start with an estimated size based on text length
-            let fontSize = maxFontSize;
-            if (displayText.length > 15) fontSize = 36;
-            if (displayText.length > 25) fontSize = 30;
-            if (displayText.length > 40) fontSize = 26;
-            if (displayText.length > 60) fontSize = 22;
-            if (displayText.length > 80) fontSize = 18;
-            if (displayText.length > 100) fontSize = 15;
+            // Create temporary element to measure text height accurately
+            const measureElement = document.createElement('div');
+            measureElement.style.cssText = `
+                position: absolute;
+                visibility: hidden;
+                font-family: 'Caveat', cursive;
+                font-weight: 500;
+                text-align: center;
+                line-height: 1.3;
+                word-wrap: break-word;
+                overflow-wrap: break-word;
+                hyphens: auto;
+                width: ${elements.polaroidCaption.offsetWidth - 24}px;
+                padding: 0;
+            `;
+            measureElement.textContent = displayText;
+            document.body.appendChild(measureElement);
 
-            // Fine-tune by measuring actual height
-            elements.polaroidCaption.style.fontSize = fontSize + 'px';
+            // Binary search for optimal font size
+            let bestFontSize = minFontSize;
 
-            // Try to increase font size if there's room
-            while (fontSize < maxFontSize && elements.polaroidCaption.scrollHeight <= maxHeight) {
-                fontSize += 2;
-                elements.polaroidCaption.style.fontSize = fontSize + 'px';
+            for (let size = maxFontSize; size >= minFontSize; size -= 2) {
+                measureElement.style.fontSize = size + 'px';
+                if (measureElement.offsetHeight <= maxHeight) {
+                    bestFontSize = size;
+                    break;
+                }
             }
 
-            // Reduce if text overflows
-            while (fontSize > minFontSize && elements.polaroidCaption.scrollHeight > maxHeight) {
-                fontSize -= 1;
-                elements.polaroidCaption.style.fontSize = fontSize + 'px';
-            }
+            // Clean up
+            document.body.removeChild(measureElement);
 
-            // Final adjustment to ensure it fits
-            if (elements.polaroidCaption.scrollHeight > maxHeight) {
-                elements.polaroidCaption.style.fontSize = minFontSize + 'px';
-            }
+            // Apply the best font size
+            elements.polaroidCaption.style.fontSize = bestFontSize + 'px';
         }
 
         // ============ Recording Functions ============
